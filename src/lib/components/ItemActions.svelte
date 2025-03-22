@@ -3,24 +3,39 @@
   import { getStorage, ref, deleteObject } from 'firebase/storage';
   import { getFirestore, doc, deleteDoc } from 'firebase/firestore';
   import { goto } from '$app/navigation';
+  import { notifications } from './Notification.svelte';
 
-  export let itemId: string;
-  export let images: string[] = [];
-  export let thumbnail: string = '';
+  // Define strict types
+  interface ItemActionsProps {
+    itemId: string;
+    images: string[];
+    thumbnail: string;
+  }
 
-  const dispatch = createEventDispatcher();
+  interface ItemActionsEvents {
+    delete: { id: string };
+    update: { id: string };
+  }
+
+  // Props with strict types
+  export let itemId: ItemActionsProps['itemId'];
+  export let images: ItemActionsProps['images'] = [];
+  export let thumbnail: ItemActionsProps['thumbnail'] = '';
+
+  const dispatch = createEventDispatcher<ItemActionsEvents>();
   const db = getFirestore();
   const storage = getStorage();
 
-  const handleView = () => {
+  // Utility functions
+  const handleView = (): void => {
     goto(`/userdashboard/items/view?id=${itemId}`);
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = (): void => {
     dispatch('update', { id: itemId });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (): Promise<void> => {
     if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
       return;
     }
@@ -35,35 +50,57 @@
       await Promise.all(deletePromises);
       await deleteDoc(doc(db, 'items', itemId));
       dispatch('delete', { id: itemId });
+      notifications.add('Item deleted successfully', 'success');
     } catch (error) {
       console.error('Error deleting item:', error);
-      alert('Error deleting item. Please try again.');
+      notifications.add('Error deleting item. Please try again.', 'error');
     }
   };
 </script>
 
-<div class="flex gap-2">
+<div 
+  class="flex gap-2"
+  role="group"
+  aria-label="Item actions"
+>
   <button
     on:click={handleView}
-    class="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors duration-200"
+    class="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
     title="View Item"
+    aria-label="View item details"
   >
-    <span class="material-symbols-outlined">visibility</span>
+    <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
   </button>
   
   <button
     on:click={handleUpdate}
-    class="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors duration-200"
+    class="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
     title="Update Item"
+    aria-label="Edit item"
   >
-    <span class="material-symbols-outlined">edit</span>
+    <span class="material-symbols-outlined" aria-hidden="true">edit</span>
   </button>
   
   <button
     on:click={handleDelete}
-    class="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors duration-200"
+    class="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
     title="Delete Item"
+    aria-label="Delete item"
   >
-    <span class="material-symbols-outlined">delete</span>
+    <span class="material-symbols-outlined" aria-hidden="true">delete</span>
   </button>
-</div> 
+</div>
+
+<style>
+  /* Ensure buttons are properly sized for touch targets */
+  button {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+  }
+
+  /* Improve focus visibility */
+  button:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+</style> 

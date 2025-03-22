@@ -52,29 +52,17 @@
       id: 'orderManagement', 
       label: 'Order Management', 
       icon: 'shopping_cart', 
-      path: '/userdashboard/orderList?view=admin',
+      path: '/userdashboard/orderList',
       adminOnly: true 
     },
     {
       id: 'transactionManagement',
       label: 'Transaction Management',
       icon: 'payments',
-      path: '/userdashboard/transactions?view=admin',
+      path: '/userdashboard/transactions',
       adminOnly: true
     }
   ];
-
-  const handleNavigation = (path: string) => {
-    if (path.includes('orderList')) {
-      // If it's the Order Management link, ensure we're in admin view
-      goto('/userdashboard/orderList?view=admin');
-    } else if (path.includes('transactions') && path.includes('Management')) {
-      // If it's the Transaction Management link, ensure we're in admin view
-      goto('/userdashboard/transactions?view=admin');
-    } else {
-      goto(path);
-    }
-  };
 
   onMount(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -89,31 +77,23 @@
         
         // Set initial active tab based on user type and current path
         const currentPath = window.location.pathname;
-        const currentSearchParams = new URLSearchParams(window.location.search);
         const availableItems = navItems.filter(item => 
           userType === 'admin' || !item.adminOnly
         );
 
         // If no available items match the current path, redirect to default
-        const matchingItem = availableItems.find(item => currentPath.startsWith(item.path.split('?')[0]));
+        const matchingItem = availableItems.find(item => currentPath.startsWith(item.path));
         if (!matchingItem) {
           if (currentPath === '/userdashboard' || !availableItems.length) {
-            handleNavigation(userType === 'admin' ? '/userdashboard/items' : '/userdashboard/personalInfo');
+            goto(userType === 'admin' ? '/userdashboard/items' : '/userdashboard/personalInfo');
             return;
           }
           // If on an unauthorized path, redirect to default
-          handleNavigation(userType === 'admin' ? '/userdashboard/items' : '/userdashboard/personalInfo');
+          goto(userType === 'admin' ? '/userdashboard/items' : '/userdashboard/personalInfo');
           return;
         }
         
         activeTab = matchingItem.id;
-        
-        // If we're on the orderList path and user is admin but not in admin view, redirect to admin view
-        if (currentPath.startsWith('/userdashboard/orderList') && 
-            userType === 'admin' && 
-            currentSearchParams.get('view') !== 'admin') {
-          handleNavigation('/userdashboard/orderList?view=admin');
-        }
         
       } catch (error) {
         console.error('Error loading user type:', error);

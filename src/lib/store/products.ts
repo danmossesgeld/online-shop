@@ -1,4 +1,4 @@
-import { writable, get } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 
 export interface Product {
     id: string;
@@ -10,13 +10,12 @@ export interface Product {
 
 export const products = writable<Product[]>([]);
 
-export function searchProducts(query: string): Product[] {
-    const store = get(products);
+export const searchProducts = (query: string) => derived(products, $products => {
     if (!query.trim()) return [];
     
-    return store
-        .filter((item: Product) => 
+    return $products
+        .filter(item => 
             item.itemName.toLowerCase().includes(query.toLowerCase())
         )
-        .slice(0, 5); // Return only top 5 matches
-} 
+        .slice(0, 5);
+}); 

@@ -21,23 +21,15 @@
     import { notifications } from '$lib/components/Notification.svelte';
 
     let mounted = false;
-    let cleanup = () => {
-        mounted = false;
-        itemsStore.set([]);
-        loadingStore.set(true);
-        errorStore.set(null);
-    };
 
     onMount(() => {
         mounted = true;
         const db = getFirestore();
 
-        // Reset stores on mount
-        if (mounted) {
-            itemsStore.set([]);
-            loadingStore.set(true);
-            errorStore.set(null);
-        }
+        // Reset stores
+        itemsStore.set([]);
+        loadingStore.set(true);
+        errorStore.set(null);
 
         // Load items
         (async () => {
@@ -48,14 +40,12 @@
                     ...doc.data(),
                 })) as Item[];
 
-                // Only update stores if component is still mounted
                 if (mounted) {
                     itemsStore.set(items);
                     loadingStore.set(false);
                 }
             } catch (error) {
                 console.error('Error loading items:', error);
-                // Only update stores if component is still mounted
                 if (mounted) {
                     const errorMessage = 'Failed to load items. Please try again later.';
                     errorStore.set(errorMessage);
@@ -65,7 +55,12 @@
             }
         })();
 
-        return cleanup;
+        return () => {
+            mounted = false;
+            itemsStore.set([]);
+            loadingStore.set(true);
+            errorStore.set(null);
+        };
     });
 </script>
 

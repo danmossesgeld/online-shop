@@ -3,42 +3,62 @@
   import { writable } from 'svelte/store';
   import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
   import { db } from '$lib/firebase';
-  import { collection, getDocs } from 'firebase/firestore';
+  import { collection, getDocs, type DocumentData } from 'firebase/firestore';
   import { notifications } from '$lib/components/Notification.svelte';
 
   const dispatch = createEventDispatcher();
 
-  // Props
+  // Define strict types
+  interface ItemData {
+    itemName: string;
+    price: number;
+    stock: number;
+    category: string;
+    thumbnail: string | null;
+    images: string[];
+    variations: Record<string, string[]>;
+    specs: string[];
+    detailedInfo: string;
+  }
+
+  interface CategoryData {
+    [key: string]: Record<string, string[]>;
+  }
+
+  // Props with strict types
   export let mode: 'create' | 'edit' = 'create';
   export let itemId: string | null = null;
-  export let initialData: {
-    itemName?: string;
-    price?: number;
-    stock?: number;
-    category?: string;
-    thumbnail?: string;
-    images?: string[];
-    variations?: Record<string, string[]>;
-    specs?: string[];
-    detailedInfo?: string;
-  } = {};
+  export let initialData: Partial<ItemData> = {};
 
-  // Form state
+  // Form state with strict types
   let itemName = initialData.itemName || '';
   let price = initialData.price || 0;
   let stock = initialData.stock || 0;
   let category = initialData.category || '';
   let detailedInfo = initialData.detailedInfo || '';
 
-  // Category selection state
-  let categoryData: Record<string, Record<string, string[]>> = {};
+  // Category selection state with strict types
+  let categoryData: CategoryData = {};
   let selectedMainCategory = '';
   let selectedSubCategory = '';
   let selectedThirdCategory = '';
   let subCategories: string[] = [];
   let thirdCategories: string[] = [];
 
-  // If initialData has category, split it to set initial selections
+  // File state with strict types
+  let thumbnail: File | null = null;
+  let images: File[] = [];
+  let currentThumbnailUrl = initialData.thumbnail || '';
+  let currentImageUrls = initialData.images || [];
+  let variations: Record<string, string[]> = initialData.variations || {};
+  let specs: string[] = initialData.specs || [];
+
+  // Store state
+  const error = writable('');
+  const successMessage = writable('');
+  const storage = getStorage();
+
+  // Initialize category selection from initialData
   onMount(async () => {
     if (initialData.category) {
       const [main, sub, third] = initialData.category.split(' > ').map(c => c.trim());
@@ -49,29 +69,27 @@
     await loadCategories();
   });
 
-  // Load categories from Firestore
-  async function loadCategories() {
+  // Load categories from Firestore with better error handling
+  async function loadCategories(): Promise<void> {
     try {
       const querySnapshot = await getDocs(collection(db, 'itemcategory'));
       querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        // Store the document data directly, as it contains array fields
+        const data = doc.data() as Record<string, string[]>;
         categoryData[doc.id] = data;
       });
       
-      // If we have initial category, set the dropdowns
       if (selectedMainCategory) {
         handleMainCategoryChange();
       }
     } catch (err) {
-      notifications.add('Error loading categories: ' + (err as Error).message, 'error');
+      console.error('Error loading categories:', err);
+      notifications.add('Error loading categories. Please try again.', 'error');
     }
   }
 
-  // Handle category changes
-  function handleMainCategoryChange() {
+  // Handle category changes with better type safety
+  function handleMainCategoryChange(): void {
     if (selectedMainCategory && categoryData[selectedMainCategory]) {
-      // Get array field names as subcategories, excluding any non-array fields
       subCategories = Object.entries(categoryData[selectedMainCategory])
         .filter(([_, value]) => Array.isArray(value))
         .map(([key]) => key);
@@ -91,9 +109,8 @@
     updateCategoryString();
   }
 
-  function handleSubCategoryChange() {
+  function handleSubCategoryChange(): void {
     if (selectedMainCategory && selectedSubCategory && categoryData[selectedMainCategory]) {
-      // Get the array values for the selected subcategory
       const arrayField = categoryData[selectedMainCategory][selectedSubCategory];
       thirdCategories = Array.isArray(arrayField) ? arrayField : [];
       
@@ -107,7 +124,7 @@
     updateCategoryString();
   }
 
-  function updateCategoryString() {
+  function updateCategoryString(): void {
     const parts = [
       selectedMainCategory,
       selectedSubCategory,
@@ -116,22 +133,10 @@
     category = parts.join(' > ');
   }
 
-  // Rest of the existing state
-  let thumbnail: File | null = null;
-  let images: File[] = [];
-  let currentThumbnailUrl = initialData.thumbnail || '';
-  let currentImageUrls = initialData.images || [];
-  let variations: Record<string, string[]> = initialData.variations || {};
-  let specs: string[] = initialData.specs || [];
-
-  const error = writable('');
-  const successMessage = writable('');
-  const storage = getStorage();
-
-  const handleRemoveThumbnail = async () => {
+  // File handling functions with better error handling
+  const handleRemoveThumbnail = async (): Promise<void> => {
     try {
       if (currentThumbnailUrl) {
-        // Get the storage reference from the URL
         const imageRef = ref(storage, currentThumbnailUrl);
         await deleteObject(imageRef);
         currentThumbnailUrl = '';
@@ -142,11 +147,10 @@
     }
   };
 
-  const handleRemoveImage = async (index: number) => {
+  const handleRemoveImage = async (index: number): Promise<void> => {
     try {
       const imageUrl = currentImageUrls[index];
       if (imageUrl) {
-        // Get the storage reference from the URL
         const imageRef = ref(storage, imageUrl);
         await deleteObject(imageRef);
         currentImageUrls = currentImageUrls.filter((_, i) => i !== index);
@@ -157,24 +161,24 @@
     }
   };
 
-  const handleFileChange = (e: Event) => {
+  const handleFileChange = (e: Event): void => {
     const target = e.target as HTMLInputElement;
-    if (target && target.files) {
+    if (target?.files) {
       if (target.id === 'thumbnail') {
-        thumbnail = target.files[0];
+        thumbnail = target.files[0] || null;
       } else if (target.id === 'images') {
         images = Array.from(target.files);
       }
     }
   };
 
-  // Variations handlers
-  const addVariation = () => {
+  // Variations handlers with better type safety
+  const addVariation = (): void => {
     const newKey = `Variation ${Object.keys(variations).length + 1}`;
     variations = { ...variations, [newKey]: [] };
   };
 
-  const handleVariationCategoryChange = (oldKey: string, newKey: string) => {
+  const handleVariationCategoryChange = (oldKey: string, newKey: string): void => {
     if (newKey.trim() !== '' && newKey !== oldKey) {
       const values = variations[oldKey] || [];
       const newVariations = { ...variations };
@@ -184,51 +188,68 @@
     }
   };
 
-  const handleVariationValueChange = (category: string, index: number, newValue: string) => {
+  const handleVariationValueChange = (category: string, index: number, newValue: string): void => {
     const values = variations[category] ? [...variations[category]] : [];
     values[index] = newValue;
     variations = { ...variations, [category]: values };
   };
 
-  const handleAddVariationValue = (category: string) => {
+  const handleAddVariationValue = (category: string): void => {
     const values = variations[category] ? [...variations[category]] : [];
     values.push('');
     variations = { ...variations, [category]: values };
   };
 
-  const handleVariationRemove = (category: string, index: number) => {
+  const handleVariationRemove = (category: string, index: number): void => {
     const values = variations[category] ? [...variations[category]] : [];
     values.splice(index, 1);
     variations = { ...variations, [category]: values };
   };
 
-  // Specifications handlers
-  const addSpec = () => {
+  // Specifications handlers with better type safety
+  const addSpec = (): void => {
     specs = [...specs, ''];
   };
 
-  const handleSpecChange = (index: number, newValue: string) => {
+  const handleSpecChange = (index: number, newValue: string): void => {
     specs[index] = newValue;
     specs = [...specs];
   };
 
-  const removeSpec = (index: number) => {
+  const removeSpec = (index: number): void => {
     specs.splice(index, 1);
     specs = [...specs];
   };
 
-  const handleSubmit = async () => {
+  // Form submission with better validation and error handling
+  const handleSubmit = async (): Promise<void> => {
+    // Validate required fields
+    if (!itemName || !price || !stock || !category) {
+      notifications.add('Please fill in all required fields.', 'error');
+      return;
+    }
+
+    // Validate images
+    if (!thumbnail && !currentThumbnailUrl) {
+      notifications.add('Please upload a thumbnail image.', 'error');
+      return;
+    }
+
+    if (images.length === 0 && currentImageUrls.length === 0) {
+      notifications.add('Please upload at least one product image.', 'error');
+      return;
+    }
+
     // Validate variations
-    for (const key in variations) {
-      if (variations[key].length === 0) {
+    for (const [key, values] of Object.entries(variations)) {
+      if (values.length === 0) {
         notifications.add(`Please add values for the "${key}" variation.`, 'error');
         return;
       }
-    }
-
-    if (!itemName || !price || !stock || !category || (!thumbnail && !currentThumbnailUrl) || (images.length === 0 && currentImageUrls.length === 0)) {
-      notifications.add('Please fill in all required fields and upload images.', 'error');
-      return;
+      if (values.some(v => !v.trim())) {
+        notifications.add(`Please fill in all values for the "${key}" variation.`, 'error');
+        return;
+      }
     }
 
     try {
@@ -248,17 +269,18 @@
       if (images.length > 0) {
         imageURLs = [];
         for (let i = 0; i < images.length; i++) {
-          const timestamp = Date.now() + i; // Add i to ensure unique timestamps even for rapid uploads
-          const imageFilename = `${itemId || 'new'}_${timestamp}_image_${i}${images[i].name.substring(images[i].name.lastIndexOf('.'))}`;
-          const imageRef = ref(storage, `items/${imageFilename}`);
-          await uploadBytes(imageRef, images[i]);
+          const image = images[i];
+          const timestamp = Date.now();
+          const imageFilename = `${itemId || 'new'}_${timestamp}_${i}${image.name.substring(image.name.lastIndexOf('.'))}`;
+          const imageRef = ref(storage, `images/${imageFilename}`);
+          await uploadBytes(imageRef, image);
           const imageURL = await getDownloadURL(imageRef);
           imageURLs.push(imageURL);
         }
       }
 
       // Prepare item data
-      const itemData = {
+      const itemData: ItemData = {
         itemName,
         price,
         stock,
@@ -267,20 +289,21 @@
         images: imageURLs,
         variations,
         specs,
-        detailedInfo,
-        ...(mode === 'create' ? { createdAt: new Date() } : { updatedAt: new Date() })
+        detailedInfo
       };
 
-      dispatch('submit', { itemData, mode });
+      // Dispatch the submit event with the item data
+      dispatch('submit', itemData);
     } catch (err) {
-      console.error(`Error ${mode === 'create' ? 'creating' : 'updating'} item:`, err);
-      throw err; // Let the parent component handle the error
+      console.error('Error submitting form:', err);
+      notifications.add('Error submitting form. Please try again.', 'error');
     }
   };
 </script>
 
 <div class="space-y-4">
   <form on:submit|preventDefault={handleSubmit} class="space-y-4">
+    <!-- Basic Information Section -->
     <div class="grid grid-cols-2 gap-4">
       <!-- Item Name -->
       <div>
@@ -311,7 +334,7 @@
             {/each}
           </select>
 
-          <!-- Sub Category (Optional) -->
+          <!-- Sub Category -->
           {#if subCategories.length > 0}
             <select
               bind:value={selectedSubCategory}
@@ -325,7 +348,7 @@
             </select>
           {/if}
 
-          <!-- Third Category (Optional) -->
+          <!-- Third Category -->
           {#if thirdCategories.length > 0}
             <select
               bind:value={selectedThirdCategory}
@@ -371,14 +394,12 @@
 
     <!-- Images Section -->
     <div class="space-y-3">
-      <h3 class="text-sm font-medium text-gray-700">Images</h3>
-
+      <h3 class="text-base font-bold text-gray-900">Images</h3>
       <div class="grid grid-cols-2 gap-4">
         <!-- Thumbnail Section -->
         <div>
-          <!-- Current Thumbnail Preview -->
           {#if currentThumbnailUrl}
-            <div class="mb-2 relative">
+            <div class="mb-2">
               <p class="text-xs font-medium text-gray-500 mb-1">Current Thumbnail</p>
               <div class="relative group">
                 <img
@@ -390,7 +411,7 @@
                   <button
                     type="button"
                     on:click={handleRemoveThumbnail}
-                    class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    class="absolute -top-1 -left-1 bg-red-500 text-white w-5 h-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 flex items-center justify-center"
                   >
                     <span class="material-symbols-outlined text-sm">close</span>
                   </button>
@@ -402,39 +423,41 @@
           <!-- Thumbnail Upload -->
           <div>
             <label for="thumbnail" class="block text-sm font-medium text-gray-700">
-              {currentThumbnailUrl ? 'Change Thumbnail' : 'Thumbnail'}
+              {currentThumbnailUrl ? 'Change Thumbnail' : 'Upload Thumbnail Image'}
             </label>
-            <input
-              type="file"
-              id="thumbnail"
-              accept="image/*"
-              on:change={handleFileChange}
-              class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
-            />
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">image</span>
+              <input
+                type="file"
+                id="thumbnail"
+                accept="image/*"
+                on:change={handleFileChange}
+                class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 pl-12"
+              />
+            </div>
           </div>
         </div>
 
         <!-- Additional Images Section -->
         <div>
-          <!-- Current Images Preview -->
           {#if currentImageUrls.length > 0}
             <div class="mb-2">
-              <p class="text-xs font-medium text-gray-500 mb-1">Current Images</p>
+              <p class="text-xs font-medium text-gray-500 mb-1">Current Product Images</p>
               <div class="flex gap-2 overflow-x-auto pb-2">
                 {#each currentImageUrls as imageUrl, index}
                   <div class="relative group">
                     <img
                       src={imageUrl}
                       alt="Product image"
-                      class="h-20 w-20 object-cover rounded-lg flex-shrink-0"
+                      class="h-20 w-20 object-cover rounded-lg"
                     />
                     {#if mode === 'edit'}
                       <button
                         type="button"
                         on:click={() => handleRemoveImage(index)}
-                        class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        class="absolute bottom-0 left-0 right-0 bg-red-500 text-white text-xs py-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600"
                       >
-                        <span class="material-symbols-outlined text-sm">close</span>
+                        Remove
                       </button>
                     {/if}
                   </div>
@@ -446,126 +469,143 @@
           <!-- Images Upload -->
           <div>
             <label for="images" class="block text-sm font-medium text-gray-700">
-              {currentImageUrls.length > 0 ? 'Add More Images' : 'Product Images'}
+              {currentImageUrls.length > 0 ? 'Add More Product Images' : 'Upload Product Images'}
             </label>
-            <input
-              type="file"
-              id="images"
-              accept="image/*"
-              multiple
-              on:change={handleFileChange}
-              class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
-            />
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">photo_library</span>
+              <input
+                type="file"
+                id="images"
+                accept="image/*"
+                multiple
+                on:change={handleFileChange}
+                class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 pl-12"
+              />
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Variations Section -->
-    <div class="space-y-3">
-      <div class="flex justify-between items-center">
-        <h3 class="text-sm font-medium text-gray-700">Variations</h3>
-        <button
-          type="button"
-          on:click={addVariation}
-          class="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
-        >
-          <span class="material-symbols-outlined text-sm">add</span>
-          Add Variation
-        </button>
-      </div>
-
-      {#each Object.entries(variations) as [category, values]}
-        <div class="bg-gray-50 p-3 rounded-lg space-y-2">
-          <div class="flex items-center gap-2">
-            <input
-              type="text"
-              value={category}
-              on:input={(e) => {
-                const target = e.target as HTMLInputElement;
-                handleVariationCategoryChange(category, target.value);
-              }}
-              placeholder="Variation name"
-              class="text-sm rounded-md border-gray-300 focus:border-orange-500 focus:ring-orange-500"
-            />
-          </div>
-
-          <div class="space-y-2">
-            {#each values as value, index}
-              <div class="flex items-center gap-2">
-                <input
-                  type="text"
-                  bind:value={values[index]}
-                  on:input={(e) => {
-                    const target = e.target as HTMLInputElement;
-                    handleVariationValueChange(category, index, target.value);
-                  }}
-                  placeholder="Value"
-                  class="text-sm rounded-md border-gray-300 focus:border-orange-500 focus:ring-orange-500"
-                />
-                <button
-                  type="button"
-                  on:click={() => handleVariationRemove(category, index)}
-                  class="text-red-500 hover:text-red-600"
-                >
-                  <span class="material-symbols-outlined text-sm">remove</span>
-                </button>
-              </div>
-            {/each}
-
-            <button
-              type="button"
-              on:click={() => handleAddVariationValue(category)}
-              class="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
-            >
-              <span class="material-symbols-outlined text-sm">add</span>
-              Add Value
-            </button>
-          </div>
-        </div>
-      {/each}
-    </div>
-
-    <!-- Specifications Section -->
-    <div class="space-y-3">
-      <div class="flex justify-between items-center">
-        <h3 class="text-sm font-medium text-gray-700">Specifications</h3>
-        <button
-          type="button"
-          on:click={addSpec}
-          class="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
-        >
-          <span class="material-symbols-outlined text-sm">add</span>
-          Add Specification
-        </button>
-      </div>
-
-      {#each specs as spec, index}
-        <div class="flex items-center gap-2">
-          <input
-            type="text"
-            bind:value={specs[index]}
-            on:input={(e) => {
-              const target = e.target as HTMLInputElement;
-              handleSpecChange(index, target.value);
-            }}
-            placeholder="Specification"
-            class="text-sm rounded-md border-gray-300 focus:border-orange-500 focus:ring-orange-500"
-          />
+    <!-- Variations and Specifications Section -->
+    <div class="grid grid-cols-2 gap-4">
+      <!-- Variations Section -->
+      <div class="space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-base font-bold text-gray-900">Product Variations</h3>
           <button
             type="button"
-            on:click={() => removeSpec(index)}
-            class="text-red-500 hover:text-red-600"
+            on:click={addVariation}
+            class="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
           >
-            <span class="material-symbols-outlined text-sm">remove</span>
+            <span class="material-symbols-outlined text-sm">add</span>
+            Add Variation
           </button>
         </div>
-      {/each}
+
+        {#each Object.entries(variations) as [category, values]}
+          <div class="bg-gray-50 p-3 rounded-lg space-y-2">
+            <div class="flex items-center gap-2">
+              <input
+                type="text"
+                value={category}
+                on:input={(e) => {
+                  const target = e.target as HTMLInputElement;
+                  handleVariationCategoryChange(category, target.value);
+                }}
+                placeholder="Variation name (e.g., Size, Color)"
+                class="text-sm rounded-md border-gray-300 focus:border-orange-500 focus:ring-orange-500 bg-gray-700 text-white placeholder-gray-400"
+              />
+              <button
+                type="button"
+                on:click={() => {
+                  const newVariations = { ...variations };
+                  delete newVariations[category];
+                  variations = newVariations;
+                }}
+                class="text-red-500 hover:text-red-600 p-1 hover:bg-red-50 rounded-full transition-colors duration-200"
+              >
+                <span class="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+
+            <div class="space-y-2">
+              {#each values as value, index}
+                <div class="flex items-center gap-2">
+                  <input
+                    type="text"
+                    bind:value={values[index]}
+                    on:input={(e) => {
+                      const target = e.target as HTMLInputElement;
+                      handleVariationValueChange(category, index, target.value);
+                    }}
+                    placeholder="Value"
+                    class="text-sm rounded-md border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                  />
+                  <button
+                    type="button"
+                    on:click={() => handleVariationRemove(category, index)}
+                    class="text-red-500 hover:text-red-600 p-1 hover:bg-red-50 rounded-full transition-colors duration-200"
+                  >
+                    <span class="material-symbols-outlined text-sm">close</span>
+                  </button>
+                </div>
+              {/each}
+
+              <button
+                type="button"
+                on:click={() => handleAddVariationValue(category)}
+                class="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
+              >
+                <span class="material-symbols-outlined text-sm">add</span>
+                Add Value
+              </button>
+            </div>
+          </div>
+        {/each}
+      </div>
+
+      <!-- Specifications Section -->
+      <div class="space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-base font-bold text-gray-900">Product Specifications</h3>
+          <button
+            type="button"
+            on:click={addSpec}
+            class="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
+          >
+            <span class="material-symbols-outlined text-sm">add</span>
+            Add Specification
+          </button>
+        </div>
+
+        {#each specs as spec, index}
+          <div class="flex items-start gap-2">
+            <button
+              type="button"
+              on:click={() => removeSpec(index)}
+              class="text-red-500 hover:text-red-600 p-1 hover:bg-red-50 rounded-full transition-colors duration-200 mt-2"
+            >
+              <span class="material-symbols-outlined text-sm">close</span>
+            </button>
+            <textarea
+              bind:value={specs[index]}
+              on:input={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                handleSpecChange(index, target.value);
+              }}
+              placeholder="Specification"
+              rows="2"
+              class="flex-1 text-sm rounded-md border-gray-300 focus:border-orange-500 focus:ring-orange-500 resize-none"
+            ></textarea>
+          </div>
+        {/each}
+      </div>
     </div>
 
     <!-- Detailed Information Section -->
     <div class="space-y-2">
-      <h3 class="text-sm font-medium text-gray-700">Detailed Information</h3>
+      <h3 class="text-base font-bold text-gray-900">Detailed Information</h3>
       <textarea
         bind:value={detailedInfo}
         rows="5"

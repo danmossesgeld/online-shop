@@ -1,111 +1,161 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { getFirestore, doc, getDoc } from 'firebase/firestore';
-  import { cart, addToCart, getCartItemCount } from '$lib/store/cart';
+  import { cart, addToCart, cartCount } from '$lib/store/cart';
   import { auth } from '$lib/firebase';
   import { signOut, type User } from 'firebase/auth';
   import { page } from '$app/stores';
   import Navbar from '$lib/components/Navbar.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import { fade, slide } from 'svelte/transition';
+  import { writable } from 'svelte/store';
+  import { notifications } from '$lib/components/Notification.svelte';
+
+  interface VariationOption {
+    value: string;
+    required?: boolean;
+  }
+
+  interface ProductVariation {
+    id: string;
+    name: string;
+    price?: number;
+    combinations: Record<string, string>;
+  }
 
   interface Product {
     id: string;
     itemName: string;
+    description: string;
     price: number;
     thumbnail: string;
-    images: string[];
-    specs: string[];
-    variations: Record<string, string[]>;
+    images?: string[];
+    variations?: {
+      Color?: string[];
+      Memory?: string[];
+      Storage?: string[];
+    };
+    productVariations: ProductVariation[];
+    specs?: string[];
     detailedInfo?: string;
   }
 
-  let product: Product | null = null;
   let loading = true;
-  let errorMessage = '';
+  let product: Product | null = null;
+  let error = '';
   let user: User | null = null;
-  let cartCount = getCartItemCount();
-  let selectedImage = ''; // Stores the main image to display
-  let selectedVariations: Record<string, string | undefined> = {};
-  let showModal = false; // For image modal toggle
+  let selectedImage = '';
+  let selectedVariations: Record<string, string> = {};
+  let selectedProductVariation: ProductVariation | null = null;
+  let showModal = false;
   let showToast = false;
   let toastMessage = '';
 
   const db = getFirestore();
+  const errorMessage = writable('');
 
-  onMount(() => {
-    const unsubscribe = auth.onAuthStateChanged(currentUser => {
-      user = currentUser;
-    });
-
-    const fetchData = async () => {
-      try {
-        const productId = $page.params.id;
-        if (!productId) {
-          throw new Error('Product ID is required');
-        }
-
-        const docRef = doc(db, 'items', productId);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          product = {
-            id: productId,
-            itemName: data.itemName || '',
-            price: data.price || 0,
-            thumbnail: data.thumbnail || '',
-            images: data.images || [],
-            specs: data.specs || [],
-            variations: data.variations || {},
-            detailedInfo: data.detailedInfo || ''
-          };
-
-          // Include thumbnail in images array if it's not already there
-          if (product.thumbnail && !product.images.includes(product.thumbnail)) {
-            product.images = [product.thumbnail, ...product.images];
-          }
-          selectedImage = product.thumbnail;
-        } else {
-          errorMessage = 'Product not found!';
-        }
-      } catch (error) {
-        console.error('Error fetching product:', error);
-        errorMessage = 'Failed to load product. Please try again later.';
-      } finally {
-        loading = false;
-      }
-    };
-
-    fetchData();
-    return () => unsubscribe();
+  // Subscribe to auth state changes
+  auth.onAuthStateChanged((newUser) => {
+    user = newUser;
   });
+
+  onMount(async () => {
+    try {
+      const productId = $page.params.id;
+      if (!productId) {
+        error = 'Product ID is required';
+        return;
+      }
+
+      const docRef = doc(db, 'items', productId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        product = {
+          id: productId,
+          itemName: data.itemName || '',
+          description: data.description || '',
+          price: data.price || 0,
+          thumbnail: data.thumbnail || '',
+          images: Array.isArray(data.images) ? data.images : [],
+          variations: data.variations || {},
+          productVariations: Array.isArray(data.productVariations) ? data.productVariations : [],
+          specs: Array.isArray(data.specs) ? data.specs : [],
+          detailedInfo: data.detailedInfo
+        };
+
+        selectedImage = product.thumbnail;
+
+        // Initialize selected variations
+        if (product.variations) {
+          Object.keys(product.variations).forEach(variationType => {
+            selectedVariations[variationType] = '';
+          });
+        }
+      } else {
+        error = 'Product not found';
+        notifications.add('Product not found', 'error');
+      }
+    } catch (err) {
+      console.error('Error fetching product:', err);
+      error = 'Failed to load product. Please try again later.';
+      notifications.add('Error loading product details', 'error');
+    } finally {
+      loading = false;
+    }
+  });
+
+  $: if (product?.variations) {
+    // Check if all variations are selected
+    const allVariationsSelected = Object.keys(product.variations).every(
+      variationType => selectedVariations[variationType]
+    );
+
+    if (allVariationsSelected) {
+      // Find matching product variation
+      selectedProductVariation = product.productVariations?.find(pv => 
+        Object.entries(selectedVariations).every(
+          ([key, value]) => pv.combinations[key] === value
+        )
+      ) || null;
+    } else {
+      selectedProductVariation = null;
+    }
+  }
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP'
+    }).format(price);
+  };
 
   const handleAddToCart = () => {
     if (!product) return;
 
-    try {
-      // Filter out any undefined variations
-      const definedVariations = Object.fromEntries(
-        Object.entries(selectedVariations).filter(([_, value]) => value !== undefined)
-      ) as Record<string, string>;
+    // Check if all variations are selected
+    const missingVariations = Object.keys(product.variations || {})
+      .filter(type => !selectedVariations[type]);
 
-      addToCart({
-        id: product.id,
-        name: product.itemName,
-        price: product.price,
-        thumbnail: product.thumbnail,
-        variations: definedVariations
-      });
-
-      cartCount = getCartItemCount();
-      showToast = true;
-      toastMessage = 'Added to cart successfully!';
-      setTimeout(() => showToast = false, 3000);
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      errorMessage = 'Failed to add item to cart. Please try again.';
+    if (missingVariations.length > 0) {
+      notifications.add('Please select all variations', 'error');
+      return;
     }
+
+    // Add to cart with variation details
+    const cartItem = {
+      id: product.id,
+      name: product.itemName,
+      price: selectedProductVariation?.price || product.price,
+      thumbnail: product.thumbnail,
+      variationId: selectedProductVariation?.id,
+      variationName: selectedProductVariation?.name,
+      selectedVariations: { ...selectedVariations }  // Include all selected variations
+    };
+
+    addToCart(cartItem);
+    notifications.add('Added to cart', 'success');
   };
 
   const handleLogout = async () => {
@@ -114,7 +164,8 @@
       window.location.href = '/';
     } catch (err) {
       console.error('Error logging out:', err);
-      errorMessage = 'Error logging out. Please try again.';
+      error = 'Error logging out. Please try again.';
+      notifications.add('Error logging out', 'error');
     }
   };
 
@@ -126,153 +177,153 @@
 
 {#if loading}
   <LoadingSpinner message="Loading product details..." fullScreen={true} color="orange" />
-{:else if errorMessage}
+{:else if error}
   <div class="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div class="text-center p-8 bg-white rounded-xl shadow-sm max-w-md mx-4">
-      <span class="material-symbols-outlined text-red-500 text-5xl mb-4">error</span>
+    <div class="text-center p-8">
+      <span class="material-symbols-outlined text-5xl text-red-500 mb-4">error</span>
       <h1 class="text-2xl font-semibold text-gray-700 mb-2">Error</h1>
-      <p class="text-gray-500 mb-6">{errorMessage}</p>
+      <p class="text-gray-500 mb-6">{error}</p>
       <a href="/mainpage" class="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-200">
         <span class="material-symbols-outlined mr-2">arrow_back</span>
         Back to Products
       </a>
     </div>
   </div>
+{:else if !user}
+  <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div class="text-center p-8">
+      <span class="material-symbols-outlined text-5xl text-gray-400 mb-4">lock</span>
+      <h1 class="text-2xl font-semibold text-gray-700 mb-2">Please Log In</h1>
+      <p class="text-gray-500 mb-6">You need to be logged in to view this page.</p>
+      <a href="/login" class="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-200">
+        <span class="material-symbols-outlined mr-2">login</span>
+        Log In
+      </a>
+    </div>
+  </div>
 {:else if product}
   <div class="min-h-screen bg-gray-50">
     <Navbar />
-    <div class="pt-16 px-4 max-w-6xl mx-auto">
-      <!-- Main Content Container -->
-      <div class="mt-4">
-        <!-- Breadcrumb -->
-        <nav class="mb-3 flex items-center space-x-1 text-sm text-gray-500">
-          <a href="/mainpage" class="hover:text-orange-500 transition-colors duration-200">Products</a>
-          <span class="material-symbols-outlined text-sm">chevron_right</span>
-          <span class="text-gray-900">{product.itemName}</span>
-        </nav>
-
-        <!-- Main Product Section -->
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div class="grid grid-cols-1 md:grid-cols-2 items-start">
-            <!-- Left Column: Image Section -->
-            <div class="p-4 md:p-6 bg-gray-50">
-              <div class="relative group aspect-square w-full bg-white rounded-lg shadow-sm">
-                <button
-                  type="button"
-                  class="w-full h-full object-contain cursor-pointer transition-all duration-300 hover:scale-[1.02] p-0 border-none overflow-hidden"
-                  on:click={() => toggleModal(selectedImage)}
-                  on:keydown={(e) => e.key === 'Enter' && toggleModal(selectedImage)}
-                  aria-label={`View larger image of ${product.itemName}`}
-                >
-                  <img 
-                    src={selectedImage} 
-                    alt={product.itemName}
-                    class="w-full h-full object-contain p-2"
-                    loading="lazy"
-                  />
-                  <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-5 transition-all duration-300 flex items-center justify-center rounded-lg">
-                    <span class="material-symbols-outlined text-gray-800 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-3xl">
-                      zoom_in
-                    </span>
-                  </div>
-                </button>
-              </div>
-              
-              {#if product.images.length > 1}
-                <div class="mt-4 flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                  {#each product.images as img}
-                    <button 
-                      type="button" 
-                      class="p-0 border-none flex-shrink-0 transition-all duration-300 hover:scale-105 aspect-square bg-white rounded-lg shadow-sm" 
-                      on:click={() => selectedImage = img}
-                    >
-                      <img 
-                        src={img} 
-                        alt="Thumbnail" 
-                        class="w-14 h-14 object-contain cursor-pointer rounded-lg border-2 transition-all duration-300"
-                        class:border-orange-500={selectedImage === img}
-                        class:border-transparent={selectedImage !== img}
-                        loading="lazy"
-                      />
-                    </button>
-                  {/each}
-                </div>
-              {/if}
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
+      <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 p-6">
+          <!-- Product Images -->
+          <div class="space-y-4">
+            <div class="aspect-square bg-white rounded-lg overflow-hidden border border-gray-100">
+              <img
+                src={selectedImage || product.thumbnail}
+                alt={product.itemName}
+                class="w-full h-full object-contain cursor-pointer"
+                on:click={() => toggleModal(selectedImage)}
+              />
             </div>
-
-            <!-- Right Column: Product Details -->
-            <div class="p-4 md:p-6 border-t md:border-t-0 md:border-l border-gray-100">
-              <!-- Title and Price -->
-              <div class="space-y-3 mb-4">
-                <h1 class="text-2xl font-bold text-gray-900 leading-tight">{product.itemName}</h1>
-                <p class="text-2xl font-semibold text-orange-500">₱{product.price.toFixed(2)}</p>
-                
-                <!-- Specifications -->
-                {#if product.specs.length > 0}
-                  <div class="pt-2">
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                      {#each product.specs as spec}
-                        <div class="flex items-center gap-1.5 bg-gray-50 px-2 py-1.5 rounded">
-                          <span class="material-symbols-outlined text-orange-500 text-sm">check_circle</span>
-                          <span class="text-gray-600 leading-tight">{spec}</span>
-                        </div>
-                      {/each}
-                    </div>
-                  </div>
+            
+            {#if product?.images && product.images.length > 0}
+              <div class="grid grid-cols-4 gap-2">
+                {#if product?.thumbnail}
+                  <button
+                    class="aspect-square bg-white rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-orange-500 border border-gray-100"
+                    class:ring-2={selectedImage === product?.thumbnail}
+                    class:ring-orange-500={selectedImage === product?.thumbnail}
+                    on:click={() => selectedImage = product?.thumbnail ?? ''}
+                  >
+                    <img
+                      src={product?.thumbnail}
+                      alt="Thumbnail"
+                      class="w-full h-full object-contain"
+                    />
+                  </button>
                 {/if}
+                {#each product.images as image}
+                  <button
+                    class="aspect-square bg-white rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-orange-500 border border-gray-100"
+                    class:ring-2={selectedImage === image}
+                    class:ring-orange-500={selectedImage === image}
+                    on:click={() => selectedImage = image}
+                  >
+                    <img
+                      src={image}
+                      alt={product.itemName}
+                      class="w-full h-full object-contain"
+                    />
+                  </button>
+                {/each}
               </div>
-
-              <!-- Variations -->
-              {#if Object.keys(product.variations).length > 0}
-                <div class="space-y-3 mb-4">
-                  {#each Object.entries(product.variations) as [category, options]}
-                    <div>
-                      <h3 class="text-sm font-medium text-gray-700 mb-1.5">{category}</h3>
-                      <div class="flex flex-wrap gap-1.5">
-                        {#each options as option}
-                          <button 
-                            class="px-3 py-1.5 rounded-full border transition-all duration-200 text-sm"
-                            class:border-orange-500={selectedVariations[category] === option}
-                            class:border-gray-200={selectedVariations[category] !== option}
-                            class:text-orange-500={selectedVariations[category] === option}
-                            class:text-gray-700={selectedVariations[category] !== option}
-                            class:bg-orange-50={selectedVariations[category] === option}
-                            on:click={() => selectedVariations[category] = option}
-                          >
-                            {option}
-                          </button>
-                        {/each}
-                      </div>
-                    </div>
-                  {/each}
-                </div>
-              {/if}
-
-              <!-- Add to Cart Button -->
-              <button
-                on:click={handleAddToCart}
-                class="w-full bg-orange-500 text-white py-2.5 px-6 rounded-lg text-sm font-semibold transition-all duration-300 hover:bg-orange-600 hover:shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                <span class="material-symbols-outlined text-lg">shopping_cart</span>
-                Add to Cart
-              </button>
-            </div>
+            {/if}
           </div>
 
-          <!-- Product Information -->
-          {#if product.detailedInfo}
-            <div class="border-t border-gray-100">
-              <div class="p-4 md:p-6 bg-gray-50">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Detailed Information</h2>
-                <div class="prose prose-sm max-w-none text-gray-600 whitespace-pre-wrap">
+          <!-- Product Info -->
+          <div class="space-y-6">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900">{product.itemName}</h1>
+              <span class="block text-2xl font-bold text-orange-600 mt-2">
+                {formatPrice(selectedProductVariation?.price || product.price)}
+              </span>
+              <p class="mt-4 text-gray-500">{product.description}</p>
+            </div>
+
+            <!-- Specifications -->
+            {#if product.specs && product.specs.length > 0}
+              <div>
+                <h3 class="text-sm font-medium text-gray-900 mb-2">Specifications</h3>
+                <ul class="list-disc pl-5 text-sm text-gray-500 space-y-1">
+                  {#each product.specs as spec}
+                    <li>{spec}</li>
+                  {/each}
+                </ul>
+              </div>
+            {/if}
+
+            <!-- Variations -->
+            {#if product.variations}
+              <div class="space-y-4">
+                {#each Object.entries(product.variations) as [variationType, options]}
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      {variationType}
+                    </label>
+                    <select
+                      bind:value={selectedVariations[variationType]}
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-200"
+                    >
+                      <option value="">Select {variationType}</option>
+                      {#each options as option}
+                        <option value={option}>{option}</option>
+                      {/each}
+                    </select>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+
+            <!-- Add to Cart Button -->
+            <button
+              on:click={handleAddToCart}
+              class="w-full inline-flex items-center justify-center px-8 py-4 text-lg font-medium rounded-lg shadow-sm text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              disabled={!product?.variations || Object.keys(product.variations).some(type => !selectedVariations[type])}
+            >
+              <span class="material-symbols-outlined text-2xl mr-2">shopping_cart</span>
+              Add to Cart
+            </button>
+          </div>
+        </div>
+
+        <!-- Product Details Section -->
+        <div class="border-t border-gray-200">
+          <div class="p-6">
+            <!-- Detailed Info -->
+            {#if product.detailedInfo}
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">Product Details</h3>
+                <div class="whitespace-pre-line text-sm text-gray-500">
                   {product.detailedInfo}
                 </div>
               </div>
-            </div>
-          {/if}
+            {/if}
+          </div>
         </div>
       </div>
-    </div>
+    </main>
 
     <!-- Modal for Image Enlargement -->
     {#if showModal}

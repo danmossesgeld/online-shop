@@ -3,18 +3,27 @@
   import { writable } from 'svelte/store';
   import { onMount } from 'svelte';
   import { signOut, type User } from 'firebase/auth';
-  import { getFirestore, collection, getDocs, type DocumentData } from 'firebase/firestore';
-  import { cart, addToCart, getCartItemCount } from '$lib/store/cart';
+  import { getFirestore, collection, getDocs, doc, getDoc, type DocumentData } from 'firebase/firestore';
+  import { cart, addToCart, cartCount } from '$lib/store/cart';
   import Navbar from '$lib/components/Navbar.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import { page } from '$app/stores';
   import { itemsStore, loadingStore, errorStore } from './+layout.svelte';
   import { notifications } from '$lib/components/Notification.svelte';
+  import { goto } from '$app/navigation';
 
   const db = getFirestore();
   let user: User | null = null;
   let loading = true;
   const error = writable('');
+  let adminEmails: string[] = [];
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(price);
+  };
 
   interface Item {
     id: string;
@@ -22,6 +31,7 @@
     price: number;
     thumbnail: string;
     category: string;
+    description?: string;
   }
 
   interface Category {
@@ -124,30 +134,25 @@
     }
   })();
 
-  let cartCount = 0;
-
   onMount(() => {
     const unsubscribe = auth.onAuthStateChanged(async currentUser => {
       user = currentUser;
       if (user) {
-        console.log('Your User ID:', user.uid);
-        // Automatically scan for user type
         try {
-          const querySnapshot = await getDocs(collection(db, 'users'));
-          const users = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            email: doc.data().email,
-            type: doc.data().type
-          }));
-          console.log('All Users:');
-          console.table(users);
-          const currentUserDoc = users.find(u => u.email === user?.email);
-          if (currentUserDoc) {
-            console.log('Your user type:', currentUserDoc.type);
+          // Check if user is admin
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists() && userDoc.data().role === 'admin') {
+            // Only scan users if admin
+            const usersSnapshot = await getDocs(collection(db, 'users'));
+            usersSnapshot.forEach(doc => {
+              const userData = doc.data();
+              if (userData.role === 'admin') {
+                adminEmails.push(userData.email);
+              }
+            });
           }
         } catch (err) {
-          console.error('Error scanning users:', err);
-          notifications.add('Error scanning users', 'error');
+          console.error('Error checking admin status:', err);
         }
       }
       loading = false;
@@ -211,7 +216,7 @@
         price: product.price,
         thumbnail: product.thumbnail
       });
-      cartCount = getCartItemCount();
+      notifications.add(`Added ${product.itemName} to cart`);
     } catch (err) {
       console.error('Error adding to cart:', err);
       notifications.add('Error adding item to cart. Please try again.', 'error');
@@ -323,32 +328,37 @@
         </div>
 
         <!-- Products Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {#each filteredItems as item}
-            <a 
-              href="/product/{item.id}" 
-              class="bg-white rounded-lg shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-1"
-            >
-              <div class="aspect-square bg-gray-50 p-3">
-                <img 
-                  src={item.thumbnail} 
+            <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300">
+              <!-- Product Image -->
+              <div class="relative h-48 w-full overflow-hidden bg-gray-100">
+                <img
+                  src={item.thumbnail || 'https://via.placeholder.com/300'}
                   alt={item.itemName}
-                  class="w-full h-full object-contain"
-                  loading="lazy"
+                  class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
                 />
+                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
               </div>
+
+              <!-- Product Info -->
               <div class="p-3">
-                <h3 class="font-medium text-gray-900 text-sm mb-1 line-clamp-2">{item.itemName}</h3>
-                <p class="text-orange-500 font-semibold text-sm">₱{item.price.toFixed(2)}</p>
-                <button
-                  on:click|preventDefault={() => handleAddToCart(item)}
-                  class="mt-2 w-full bg-gray-50 text-gray-700 hover:bg-gray-100 py-1.5 px-3 rounded text-xs font-medium transition-colors duration-200 flex items-center justify-center gap-1.5"
-                >
-                  <span class="material-symbols-outlined text-sm">shopping_cart</span>
-                  Add to Cart
-                </button>
+                <h3 class="text-base font-semibold text-gray-900 mb-2 truncate">{item.itemName}</h3>
+                
+                <div class="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <span class="text-base font-semibold text-orange-600">
+                    {formatPrice(item.price)}
+                  </span>
+                  <button
+                    on:click={() => goto(`/product/${item.id}`)}
+                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+                  >
+                    <span class="material-symbols-outlined text-base mr-1">visibility</span>
+                    View
+                  </button>
+                </div>
               </div>
-            </a>
+            </div>
           {/each}
         </div>
 

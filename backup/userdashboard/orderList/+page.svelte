@@ -218,29 +218,22 @@
                   {formatDate(order.timestamp)}
                 </td>
                 <td class="px-8 py-6">
-                  <div class="text-sm text-gray-900">
-                    {#each order.items.slice(0, 1) as item}
+                  <div class="text-sm text-gray-900 space-y-4">
+                    {#each order.items as item}
                       <div class="flex items-start">
                         <div>
-                          <div class="font-medium text-gray-900">
-                            {item.name}
-                            {#if item.selectedVariations}
-                              <span class="text-gray-600">
-                                ({Object.entries(item.selectedVariations).map(([key, value]) => `${value}`).join(', ')})
-                              </span>
-                            {/if}
-                          </div>
-                          <div class="text-sm text-gray-500">
+                          <div class="font-medium text-gray-900">{item.name}</div>
+                          {#if item.selectedVariations}
+                            <div class="text-sm text-gray-600 mt-1">
+                              {Object.entries(item.selectedVariations).map(([key, value]) => `${key}: ${value}`).join(', ')}
+                            </div>
+                          {/if}
+                          <div class="text-sm text-gray-500 mt-1">
                             {item.quantity} x {formatPrice(item.price)}
                           </div>
                         </div>
                       </div>
                     {/each}
-                    {#if order.items.length > 1}
-                      <div class="text-sm text-gray-500 mt-1">
-                        +{order.items.length - 1} more {order.items.length - 1 === 1 ? 'item' : 'items'}
-                      </div>
-                    {/if}
                   </div>
                 </td>
                 <td class="px-8 py-6 whitespace-nowrap text-sm font-medium text-gray-900">

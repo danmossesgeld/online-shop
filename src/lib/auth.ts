@@ -1,76 +1,101 @@
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, type AuthError } from 'firebase/auth';
 import { auth, db } from './firebase';
-import { doc, setDoc, getDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, collection, getDocs, type DocumentData } from 'firebase/firestore';
 
-// Enhanced signup with detailed error handling
-export const signup = async (email: string, password: string) => {
+// Define strict types for error codes
+type AuthErrorCode = 'auth/email-already-in-use' | 'auth/invalid-email' | 'auth/weak-password' | 'auth/user-not-found' | 'auth/wrong-password';
+
+const handleAuthError = (error: AuthError): Error => {
+  const errorMessages: Record<AuthErrorCode, string> = {
+    'auth/email-already-in-use': 'The email is already in use.',
+    'auth/invalid-email': 'The email format is invalid.',
+    'auth/weak-password': 'The password is too weak.',
+    'auth/user-not-found': 'No user found with this email.',
+    'auth/wrong-password': 'Incorrect password.'
+  };
+  return new Error(errorMessages[error.code as AuthErrorCode] || 'An unknown error occurred.');
+};
+
+// Define strict types for user data
+export interface UserData {
+  email: string;
+  type: 'user' | 'admin';
+  firstName?: string;
+  lastName?: string;
+  midName?: string;
+  address?: string;
+  contactNumber?: string;
+  createdAt: Date;
+}
+
+// Define strict types for signup data
+export interface SignupData {
+  firstName: string;
+  lastName: string;
+  midName: string;
+  address: string;
+  contactNumber: string;
+  type: 'user' | 'admin';
+}
+
+// Enhanced signup with better type safety and error handling
+export const signup = async (email: string, password: string, userData: SignupData): Promise<UserData> => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    // Create user document in Firestore
-    await setDoc(doc(db, 'users', userCredential.user.uid), {
-      email: userCredential.user.email,
-      type: 'user', // Default type is 'user'
+    const user = userCredential.user;
+
+    const userDoc: UserData = {
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      midName: userData.midName,
+      address: userData.address,
+      contactNumber: userData.contactNumber,
+      email,
+      type: userData.type || 'user',
       createdAt: new Date()
-    });
-    return userCredential.user;
+    };
+
+    await setDoc(doc(db, 'users', user.uid), userDoc);
+    return userDoc;
   } catch (error) {
-    const firebaseError = error as AuthError;
-    switch (firebaseError.code) {
-      case 'auth/email-already-in-use':
-        throw new Error('The email is already in use.');
-      case 'auth/invalid-email':
-        throw new Error('The email format is invalid.');
-      case 'auth/weak-password':
-        throw new Error('The password is too weak.');
-      default:
-        throw new Error('An error occurred during signup.');
-    }
+    console.error('Error in signup:', error);
+    throw handleAuthError(error as AuthError);
   }
 };
 
-// Get user type from Firestore
-export const getUserType = async (uid: string): Promise<string> => {
+// Get user type with better type safety
+export const getUserType = async (uid: string): Promise<'user' | 'admin'> => {
   try {
     const userDoc = await getDoc(doc(db, 'users', uid));
-    if (userDoc.exists()) {
-      return userDoc.data().type;
-    }
-    // If document doesn't exist, create it
-    await ensureUserDocument(uid);
-    return 'user'; // Default type if not found
+    return (userDoc.exists() ? userDoc.data().type : 'user') as 'user' | 'admin';
   } catch (error) {
     console.error('Error getting user type:', error);
-    return 'user'; // Default type on error
+    return 'user';
   }
 };
 
-// Ensure user document exists
-export const ensureUserDocument = async (uid: string) => {
+// Ensure user document exists with better type safety
+export const ensureUserDocument = async (uid: string): Promise<void> => {
   try {
     const userDoc = await getDoc(doc(db, 'users', uid));
-    if (!userDoc.exists()) {
-      const user = auth.currentUser;
-      if (user) {
-        await setDoc(doc(db, 'users', uid), {
-          email: user.email,
-          type: 'user',
-          createdAt: new Date()
-        });
-        console.log('Created user document for:', uid);
-      }
+    if (!userDoc.exists() && auth.currentUser) {
+      const userData: UserData = {
+        email: auth.currentUser.email || '',
+        type: 'user',
+        createdAt: new Date()
+      };
+      await setDoc(doc(db, 'users', uid), userData);
     }
   } catch (error) {
     console.error('Error ensuring user document:', error);
+    throw new Error('Failed to ensure user document exists');
   }
 };
 
-// Set user as admin
-export const setUserAsAdmin = async (uid: string) => {
+// Set user as admin with better error handling
+export const setUserAsAdmin = async (uid: string): Promise<boolean> => {
   try {
-    const userRef = doc(db, 'users', uid);
-    await updateDoc(userRef, {
-      type: 'admin'
-    });
+    await updateDoc(doc(db, 'users', uid), { type: 'admin' });
     return true;
   } catch (error) {
     console.error('Error setting user as admin:', error);
@@ -78,74 +103,37 @@ export const setUserAsAdmin = async (uid: string) => {
   }
 };
 
-// Create admin user
-export const createAdminUser = async (email: string, password: string) => {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    // Create user document in Firestore with admin type
-    await setDoc(doc(db, 'users', userCredential.user.uid), {
-      email: userCredential.user.email,
-      type: 'admin',
-      createdAt: new Date()
-    });
-    return userCredential.user;
-  } catch (error) {
-    const firebaseError = error as AuthError;
-    switch (firebaseError.code) {
-      case 'auth/email-already-in-use':
-        throw new Error('The email is already in use.');
-      case 'auth/invalid-email':
-        throw new Error('The email format is invalid.');
-      case 'auth/weak-password':
-        throw new Error('The password is too weak.');
-      default:
-        throw new Error('An error occurred during signup.');
-    }
-  }
-};
-
-// Enhanced login with detailed error handling
-export const login = async (email: string, password: string) => {
+// Enhanced login with better error handling
+export const login = async (email: string, password: string): Promise<UserData> => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    // Ensure user document exists when logging in
     await ensureUserDocument(userCredential.user.uid);
-    return userCredential.user;
+    const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+    return userDoc.data() as UserData;
   } catch (error) {
-    const firebaseError = error as AuthError;
-    switch (firebaseError.code) {
-      case 'auth/user-not-found':
-        throw new Error('No user found with this email.');
-      case 'auth/wrong-password':
-        throw new Error('Incorrect password.');
-      case 'auth/invalid-email':
-        throw new Error('The email format is invalid.');
-      default:
-        throw new Error('An error occurred during login.');
-    }
+    throw handleAuthError(error as AuthError);
   }
 };
 
-// Logout function with enhanced error handling
-export const logout = async () => {
+// Logout function with better error handling
+export const logout = async (): Promise<void> => {
   try {
     await signOut(auth);
   } catch (error) {
-    throw new Error('An error occurred during logout.');
+    console.error('Error during logout:', error);
+    throw new Error('Failed to logout. Please try again.');
   }
 };
 
-// Scan all users and their types
-export const scanUserTypes = async () => {
+// Scan all users with better type safety
+export const scanUserTypes = async (): Promise<Array<{ id: string; email: string; type: 'user' | 'admin' }>> => {
   try {
     const querySnapshot = await getDocs(collection(db, 'users'));
-    const users = querySnapshot.docs.map(doc => ({
+    return querySnapshot.docs.map(doc => ({
       id: doc.id,
       email: doc.data().email,
-      type: doc.data().type
+      type: doc.data().type as 'user' | 'admin'
     }));
-    console.table(users); // This will show a nice table in the console
-    return users;
   } catch (error) {
     console.error('Error scanning user types:', error);
     return [];

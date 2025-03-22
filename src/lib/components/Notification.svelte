@@ -1,37 +1,50 @@
 <script lang="ts" context="module">
   import { writable } from 'svelte/store';
 
+  // Define strict types
+  type NotificationType = 'success' | 'error' | 'info';
+
   interface Notification {
     id: string;
     message: string;
-    type: 'success' | 'error' | 'info';
+    type: NotificationType;
+    duration?: number;
   }
 
-  let notificationCounter = 0;
-  function generateId() {
-    notificationCounter += 1;
-    return `notification-${Date.now()}-${notificationCounter}`;
+  interface NotificationStore {
+    subscribe: (callback: (value: Notification[]) => void) => () => void;
+    add: (message: string, type?: NotificationType, duration?: number) => void;
+    remove: (id: string) => void;
   }
 
-  function createNotificationStore() {
+  // Utility functions
+  const generateId = (): string => {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    return `notification-${timestamp}-${random}`;
+  };
+
+  const createNotificationStore = (): NotificationStore => {
     const { subscribe, update } = writable<Notification[]>([]);
 
     return {
       subscribe,
-      add: (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+      add: (message: string, type: NotificationType = 'success', duration = 3000) => {
         const id = generateId();
-        update(notifications => [...notifications, { id, message, type }]);
+        const notification: Notification = { id, message, type, duration };
         
-        // Remove notification after 3 seconds
+        update(notifications => [...notifications, notification]);
+        
+        // Remove notification after specified duration
         setTimeout(() => {
           update(notifications => notifications.filter(n => n.id !== id));
-        }, 3000);
+        }, duration);
       },
       remove: (id: string) => {
         update(notifications => notifications.filter(n => n.id !== id));
       }
     };
-  }
+  };
 
   export const notifications = createNotificationStore();
 </script>
@@ -39,22 +52,53 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import Icon from '@iconify/svelte';
+
+  // Define icon mapping
+  const iconMap: Record<Notification['type'], string> = {
+    success: 'material-symbols:check-circle',
+    error: 'material-symbols:error',
+    info: 'material-symbols:info'
+  };
+
+  // Define color mapping
+  const colorMap: Record<Notification['type'], string> = {
+    success: 'text-green-500',
+    error: 'text-red-500',
+    info: 'text-blue-500'
+  };
 </script>
 
-<div class="fixed top-4 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-2">
+<div 
+  class="fixed top-4 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-2"
+  role="region"
+  aria-live="polite"
+  aria-label="Notifications"
+>
   {#each $notifications as notification (notification.id)}
     <div
       transition:fade={{ duration: 200 }}
       class="bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-lg px-5 py-3 flex items-center gap-3 min-w-[200px] border border-gray-200 dark:border-gray-700"
+      role="alert"
+      aria-label={`${notification.type} notification`}
     >
-      {#if notification.type === 'success'}
-        <Icon icon="material-symbols:check-circle" class="text-green-500 text-xl" />
-      {:else if notification.type === 'error'}
-        <Icon icon="material-symbols:error" class="text-red-500 text-xl" />
-      {:else}
-        <Icon icon="material-symbols:info" class="text-blue-500 text-xl" />
-      {/if}
+      <Icon 
+        icon={iconMap[notification.type]} 
+        class={`${colorMap[notification.type]} text-xl`}
+        aria-hidden="true"
+      />
       <span class="text-gray-700 dark:text-gray-200">{notification.message}</span>
     </div>
   {/each}
-</div> 
+</div>
+
+<style>
+  /* Ensure notifications are above other content */
+  div[role="region"] {
+    pointer-events: none;
+  }
+
+  /* Make notification content interactive */
+  div[role="alert"] {
+    pointer-events: auto;
+  }
+</style> 
