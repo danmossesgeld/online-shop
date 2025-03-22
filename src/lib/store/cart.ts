@@ -1,8 +1,17 @@
 import { writable } from 'svelte/store';
 import { notifications } from './notifications';
 
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  thumbnail: string;
+  quantity: number;
+  variations?: Record<string, string>;
+}
+
 // Initialize the cart with the localStorage value or an empty array
-let initialCart: any[] = [];
+let initialCart: CartItem[] = [];
 
 try {
   const storedCart = localStorage.getItem('cart');
@@ -18,7 +27,7 @@ try {
   initialCart = []; // Fallback to empty cart if there's any error
 }
 
-export const cart = writable<any[]>(initialCart);
+export const cart = writable<CartItem[]>(initialCart);
 
 // Persist cart to localStorage whenever it changes
 cart.subscribe((items) => {
@@ -30,15 +39,19 @@ cart.subscribe((items) => {
 });
 
 // Function to add an item to the cart
-export function addToCart(item: any) {
+export function addToCart(item: Omit<CartItem, 'quantity'>) {
   cart.update((currentCart) => {
-    const existingItem = currentCart.find((i) => i.id === item.id);
+    const existingItem = currentCart.find((i) => 
+      i.id === item.id && 
+      JSON.stringify(i.variations) === JSON.stringify(item.variations)
+    );
+    
     if (existingItem) {
       existingItem.quantity += 1;
-      notifications.add(`Updated quantity of ${item.name || 'item'} in cart`);
+      notifications.add(`Updated quantity of ${item.name} in cart`);
     } else {
       currentCart.push({ ...item, quantity: 1 });
-      notifications.add(`Added ${item.name || 'item'} to cart`);
+      notifications.add(`Added ${item.name} to cart`);
     }
     return currentCart;
   });
