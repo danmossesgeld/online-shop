@@ -1,0 +1,24 @@
+/* src/app.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* app.css */
+
+/* Set Font Awesome as a global font for the app */
+body {
+    font-family: 'Font Awesome 5 Free', sans-serif;
+  }
+  
+  /* Example of how to add Font Awesome icons in front of all text */
+  .icon-text:before {
+    font-family: 'Font Awesome 5 Free';
+    content: '\f007'; /* Example icon (fa-user) */
+    padding-right: 8px;
+    color: #c23939;
+  }
+  
+  h1, h2, h3, p {
+    font-family: 'Font Awesome 5 Free', sans-serif;
+    
+  }
+  
