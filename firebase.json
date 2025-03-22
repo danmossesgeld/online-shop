@@ -4,7 +4,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "public": "public",
+    "public": "build",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -18,18 +18,6 @@
     ]
   },
   "storage": {
-    "cors": [
-      {
-        "origin": [
-          "http://localhost:5173"
-        ],
-        "method": [
-          "GET",
-          "POST",
-          "PUT"
-        ],
-        "maxAgeSeconds": 3600
-      }
-    ]
+    "rules": "storage.rules"
   }
 }
