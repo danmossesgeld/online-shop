@@ -1,6 +1,43 @@
+<script lang="ts" context="module">
+  import { writable } from 'svelte/store';
+
+  interface Notification {
+    id: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }
+
+  let notificationCounter = 0;
+  function generateId() {
+    notificationCounter += 1;
+    return `notification-${Date.now()}-${notificationCounter}`;
+  }
+
+  function createNotificationStore() {
+    const { subscribe, update } = writable<Notification[]>([]);
+
+    return {
+      subscribe,
+      add: (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+        const id = generateId();
+        update(notifications => [...notifications, { id, message, type }]);
+        
+        // Remove notification after 3 seconds
+        setTimeout(() => {
+          update(notifications => notifications.filter(n => n.id !== id));
+        }, 3000);
+      },
+      remove: (id: string) => {
+        update(notifications => notifications.filter(n => n.id !== id));
+      }
+    };
+  }
+
+  export const notifications = createNotificationStore();
+</script>
+
 <script lang="ts">
-  import { notifications } from '$lib/store/notifications';
-  import { fade, slide } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
   import Icon from '@iconify/svelte';
 </script>
 

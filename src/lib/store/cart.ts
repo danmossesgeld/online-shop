@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { notifications } from './notifications';
+import { notifications } from '$lib/components/Notification.svelte';
 
 interface CartItem {
   id: string;
@@ -11,21 +11,19 @@ interface CartItem {
 }
 
 // Initialize the cart with the localStorage value or an empty array
-let initialCart: CartItem[] = [];
-
-try {
-  const storedCart = localStorage.getItem('cart');
-  if (storedCart) {
-    initialCart = JSON.parse(storedCart);
-    // Check if the loaded cart is valid
-    if (!Array.isArray(initialCart) || initialCart.some(item => !item.id || !item.quantity)) {
-      throw new Error('Invalid cart data in localStorage');
-    }
+const initialCart: CartItem[] = (() => {
+  try {
+    const storedCart = localStorage.getItem('cart');
+    if (!storedCart) return [];
+    
+    const parsed = JSON.parse(storedCart);
+    return Array.isArray(parsed) && parsed.every(item => item.id && item.quantity) 
+      ? parsed 
+      : [];
+  } catch {
+    return [];
   }
-} catch (error) {
-  console.error('Error loading cart from localStorage:', error);
-  initialCart = []; // Fallback to empty cart if there's any error
-}
+})();
 
 export const cart = writable<CartItem[]>(initialCart);
 
@@ -62,12 +60,12 @@ export function removeFromCart(itemId: string) {
   cart.update((currentCart) => currentCart.filter((item) => item.id !== itemId));
 }
 
-// Function to get the total quantity of items in the cart (sum of quantities)
+// Function to get the total quantity of items in the cart
 export function getCartItemCount(): number {
   let count = 0;
   cart.subscribe((items) => {
     count = items.reduce((total, item) => total + item.quantity, 0);
-  })();
+  });
   return count;
 }
 
