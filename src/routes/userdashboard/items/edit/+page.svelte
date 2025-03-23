@@ -96,7 +96,7 @@
 <div class="w-full">
   <div class="bg-white rounded-lg shadow-sm p-4">
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-lg font-semibold text-gray-700">Edit Item</h2>
+      <h2 class="text-2xl font-bold text-orange-500">Update Item</h2>
       <button
         on:click={() => goto('/userdashboard/items')}
         class="text-gray-500 hover:text-gray-700 transition-colors duration-200"
