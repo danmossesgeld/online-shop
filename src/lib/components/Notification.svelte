@@ -51,13 +51,12 @@
 
 <script lang="ts">
   import { fade } from 'svelte/transition';
-  import Icon from '@iconify/svelte';
 
   // Define icon mapping
   const iconMap: Record<Notification['type'], string> = {
-    success: 'material-symbols:check-circle',
-    error: 'material-symbols:error',
-    info: 'material-symbols:info'
+    success: 'check_circle',
+    error: 'error',
+    info: 'info'
   };
 
   // Define color mapping
@@ -81,11 +80,12 @@
       role="alert"
       aria-label={`${notification.type} notification`}
     >
-      <Icon 
-        icon={iconMap[notification.type]} 
-        class={`${colorMap[notification.type]} text-xl`}
+      <span 
+        class="material-symbols-outlined text-xl {colorMap[notification.type]}"
         aria-hidden="true"
-      />
+      >
+        {iconMap[notification.type]}
+      </span>
       <span class="text-gray-700 dark:text-gray-200">{notification.message}</span>
     </div>
   {/each}

@@ -19,6 +19,8 @@
     import { getFirestore, collection, getDocs } from 'firebase/firestore';
     import { onMount } from 'svelte';
     import { notifications } from '$lib/components/Notification.svelte';
+    import { auth } from '$lib/firebase';
+    import { goto } from '$app/navigation';
 
     let mounted = false;
 
@@ -31,8 +33,15 @@
         loadingStore.set(true);
         errorStore.set(null);
 
-        // Load items
-        (async () => {
+        // Set up auth listener
+        const unsubscribe = auth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                // If not authenticated, redirect to login
+                goto('/login');
+                return;
+            }
+
+            // Load items only after authentication is confirmed
             try {
                 const itemsSnapshot = await getDocs(collection(db, 'items'));
                 const items = itemsSnapshot.docs.map(doc => ({
@@ -53,10 +62,11 @@
                     loadingStore.set(false);
                 }
             }
-        })();
+        });
 
         return () => {
             mounted = false;
+            unsubscribe();
             itemsStore.set([]);
             loadingStore.set(true);
             errorStore.set(null);

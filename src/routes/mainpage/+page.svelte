@@ -146,28 +146,34 @@
   onMount(() => {
     const unsubscribe = auth.onAuthStateChanged(async currentUser => {
       user = currentUser;
-      if (user) {
-        try {
-          // Check if user is admin
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists() && userDoc.data().role === 'admin') {
-            // Only scan users if admin
-            const usersSnapshot = await getDocs(collection(db, 'users'));
-            usersSnapshot.forEach(doc => {
-              const userData = doc.data();
-              if (userData.role === 'admin') {
-                adminEmails.push(userData.email);
-              }
-            });
-          }
-        } catch (err) {
-          console.error('Error checking admin status:', err);
+      if (!user) {
+        // If not authenticated, redirect to login
+        goto('/login');
+        return;
+      }
+
+      try {
+        // Check if user is admin
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists() && userDoc.data().role === 'admin') {
+          // Only scan users if admin
+          const usersSnapshot = await getDocs(collection(db, 'users'));
+          usersSnapshot.forEach(doc => {
+            const userData = doc.data();
+            if (userData.role === 'admin') {
+              adminEmails.push(userData.email);
+            }
+          });
         }
+
+        // Fetch categories only after authentication is confirmed
+        await fetchCategories();
+      } catch (err) {
+        console.error('Error during initialization:', err);
+        notifications.add('Error loading data. Please try again later.', 'error');
       }
       loading = false;
     });
-
-    fetchCategories();
 
     return () => unsubscribe();
   });
@@ -468,7 +474,6 @@
     </div>
   </div>
 {/if}
-
 <style>
   :global(iconify-icon) {
     width: 32px;
@@ -488,3 +493,4 @@
     scrollbar-width: none;  /* Firefox */
   }
 </style>
+
