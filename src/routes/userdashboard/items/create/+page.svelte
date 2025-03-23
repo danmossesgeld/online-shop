@@ -28,16 +28,37 @@
     const itemId = doc(collection(db, 'items')).id;
     
     try {
-      await setDoc(doc(db, 'items', itemId), {
+      // Validate required fields
+      const requiredFields = ['itemName', 'price', 'stock', 'category', 'thumbnail', 'images', 'variations', 'specs'];
+      const missingFields = requiredFields.filter(field => !itemData[field]);
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+
+      // Ensure price and stock are numbers
+      if (typeof itemData.price !== 'number' || typeof itemData.stock !== 'number') {
+        throw new Error('Price and stock must be numbers');
+      }
+
+      // Create the item document
+      const itemRef = doc(db, 'items', itemId);
+      const itemToCreate = {
         ...itemData,
-        itemId
-      });
+        itemId,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      console.log('Creating new item with data:', itemToCreate);
+      
+      await setDoc(itemRef, itemToCreate);
 
       notifications.add('Item created successfully', 'success');
       setTimeout(() => goto('/userdashboard/items'), 1500);
     } catch (error) {
       console.error('Error creating item:', error);
-      notifications.add('Failed to create item', 'error');
+      notifications.add('Failed to create item: ' + (error as Error).message, 'error');
     }
   };
 </script>

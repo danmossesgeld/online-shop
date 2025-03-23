@@ -64,12 +64,31 @@
     }
 
     try {
-      await updateDoc(doc(db, 'items', id), event.detail.itemData);
+      const { itemData } = event.detail;
+      console.log('Received item data:', itemData);
+      
+      // Ensure all required fields are present
+      const requiredFields = ['itemName', 'price', 'stock', 'category', 'thumbnail', 'images', 'variations', 'specs'];
+      const missingFields = requiredFields.filter(field => !itemData[field]);
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+      
+      // Update item in Firestore
+      const itemRef = doc(db, 'items', id);
+      console.log('Updating document with data:', itemData);
+      
+      await updateDoc(itemRef, {
+        ...itemData,
+        updatedAt: new Date()
+      });
+
       notifications.add('Item updated successfully', 'success');
       setTimeout(() => goto('/userdashboard/items'), 1500);
     } catch (err) {
       console.error('Error updating item:', err);
-      notifications.add('Failed to update item', 'error');
+      notifications.add('Failed to update item: ' + (err as Error).message, 'error');
     }
   };
 </script>
