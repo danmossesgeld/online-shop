@@ -49,6 +49,13 @@
       adminOnly: true 
     },
     { 
+      id: 'categoryManagement', 
+      label: 'Category Management', 
+      icon: 'category', 
+      path: '/userdashboard/categories',
+      adminOnly: true 
+    },
+    { 
       id: 'orderManagement', 
       label: 'Order Management', 
       icon: 'shopping_cart', 
