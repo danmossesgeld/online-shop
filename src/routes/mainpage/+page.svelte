@@ -3,7 +3,7 @@
   import { writable } from 'svelte/store';
   import { onMount } from 'svelte';
   import { signOut, type User } from 'firebase/auth';
-  import { getFirestore, collection, getDocs, doc, getDoc, type DocumentData } from 'firebase/firestore';
+  import { getFirestore, collection, getDocs, doc, getDoc } from 'firebase/firestore';
   import { cart, addToCart, cartCount } from '$lib/store/cart';
   import Navbar from '$lib/components/Navbar.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -31,23 +31,33 @@
     price: number;
     thumbnail: string;
     category: string;
+    group?: string;
+    subcategory?: string;
     description?: string;
   }
 
   interface Category {
-    main: string;
-    subcategories: Array<{
-      group: string;
-      subcategories: string[];
-    }>;
+    name: string;
+    groups: Record<string, string[]>;
+    icon: string;
   }
 
   let items: Item[] = [];
   let searchQuery = '';
   let categories: Category[] = [];
-  let selectedMainCategory: string | null = null;
+  let selectedCategory: string | null = null;
   let selectedGroup: string | null = null;
-  let selectedSubCategory: string | null = null;
+  let selectedSubcategory: string | null = null;
+  let currentCategory: Category | null = null;
+
+  // Reactive statement to update currentCategory
+  $: {
+    if (selectedCategory) {
+      currentCategory = categories.find(c => c.name === selectedCategory) || null;
+    } else {
+      currentCategory = null;
+    }
+  }
 
   // Define the sort options type explicitly.
   type SortOption = 'relevance' | 'priceAsc' | 'priceDesc' | 'nameAsc' | 'nameDesc';
@@ -73,7 +83,7 @@
     }
   }
 
-  // Use a reactive assignment so the result is stored in filteredItems.
+  // Reactive filtered items based on search and category filters
   $: filteredItems = (() => {
     try {
       let filtered = items;
@@ -85,30 +95,29 @@
         );
       }
       
-      // Apply category filters
-      if (selectedMainCategory || selectedGroup || selectedSubCategory) {
-        filtered = filtered.filter(item => {
-          const categoryPath = item.category.split(' > ');
-          
-          // Match main category if selected
-          if (selectedMainCategory && categoryPath[0] !== selectedMainCategory) {
-            return false;
-          }
-          
-          // Match group if selected
-          if (selectedGroup && categoryPath[1] !== selectedGroup) {
-            return false;
-          }
-          
-          // Match subcategory if selected
-          if (selectedSubCategory && categoryPath[2] !== selectedSubCategory) {
-            return false;
-          }
-          
-          return true;
-        });
-      }
-
+      // Apply category filters if selected
+      filtered = filtered.filter(item => {
+        if (!selectedCategory) return true;
+        
+        // Split the item's category into parts
+        const itemCategoryParts = item.category.split(' > ');
+        const selectedParts = [selectedCategory];
+        
+        if (selectedGroup) {
+          selectedParts.push(selectedGroup);
+        }
+        if (selectedSubcategory) {
+          // Filter out the 'icon' field from subcategories
+          const subcategories = categories.find(c => c.name === selectedCategory)?.groups[selectedGroup ?? ''] ?? [];
+          const validSubcategories = subcategories.filter(sub => sub !== 'icon');
+          if (!validSubcategories.includes(selectedSubcategory)) return false;
+          selectedParts.push(selectedSubcategory);
+        }
+        
+        // Check if the selected category path matches the item's category path
+        return selectedParts.every((part, index) => itemCategoryParts[index] === part);
+      });
+      
       // Apply sorting
       const sortedItems = [...filtered];
       switch (sortBy) {
@@ -166,45 +175,40 @@
   const fetchCategories = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, 'itemcategory'));
-      categories = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return { 
-          main: doc.id,
-          subcategories: Object.entries(data).map(([group, subcategories]) => ({
-            group,
-            subcategories: subcategories as string[]
-          }))
-        };
-      });
+      categories = querySnapshot.docs.map(doc => ({
+        name: doc.id,
+        groups: doc.data(),
+        icon: doc.data().icon || '<iconify-icon icon="material-symbols:category" class="text-orange-500"></iconify-icon>'
+      }));
     } catch (err) {
       console.error('Error fetching categories:', err);
       notifications.add('Error fetching categories. Please try again later.', 'error');
     }
   };
 
-  const selectMainCategory = (category: string) => {
-    if (category === selectedMainCategory) {
-      // If clicking the same main category, clear all selections
-      selectedMainCategory = null;
+  const selectCategory = (category: string) => {
+    if (category === selectedCategory) {
+      // If clicking the same category, clear all selections
+      selectedCategory = null;
       selectedGroup = null;
-      selectedSubCategory = null;
+      selectedSubcategory = null;
     } else {
-      // Select new main category and clear sub-selections
-      selectedMainCategory = category;
+      // Select new category and clear sub-selections
+      selectedCategory = category;
       selectedGroup = null;
-      selectedSubCategory = null;
+      selectedSubcategory = null;
     }
   };
 
-  const selectSubCategory = (group: string, subcategory: string) => {
-    if (group === selectedGroup && subcategory === selectedSubCategory) {
+  const selectSubcategory = (group: string, subcategory: string) => {
+    if (group === selectedGroup && subcategory === selectedSubcategory) {
       // If clicking the same subcategory, clear sub-selections
       selectedGroup = null;
-      selectedSubCategory = null;
+      selectedSubcategory = null;
     } else {
       // Select new group and subcategory
       selectedGroup = group;
-      selectedSubCategory = subcategory;
+      selectedSubcategory = subcategory;
     }
   };
 
@@ -232,7 +236,22 @@
       notifications.add('Error logging out. Please try again.', 'error');
     }
   };
+
+  // Utility function to filter items by category name
+  const getCategoryItems = (categoryName: string | null): Item[] => {
+    if (!categoryName) return [];
+    return filteredItems.filter(item => item.category.startsWith(categoryName));
+  };
+
+  // Helper function for non-null category names
+  const getCategoryItemsByName = (categoryName: string): Item[] => {
+    return filteredItems.filter(item => item.category.startsWith(categoryName));
+  };
 </script>
+
+<svelte:head>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+</svelte:head>
 
 {#if loading}
   <LoadingSpinner message="Loading products..." fullScreen={true} color="orange" />
@@ -250,68 +269,9 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <!-- Filter Section -->
         <div class="bg-white rounded-lg shadow-sm p-3 mb-4">
-          <div class="flex flex-wrap items-start justify-between gap-4">
-            <!-- Category Filters -->
-            <div class="flex-1 min-w-0">
-              <!-- Main Categories -->
-              <div class="flex flex-wrap items-center gap-2">
-                {#each categories as category}
-                  <button
-                    on:click={() => selectMainCategory(category.main)}
-                    class="px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200
-                      {selectedMainCategory === category.main 
-                        ? 'bg-orange-500 text-white shadow-sm' 
-                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}"
-                  >
-                    {category.main}
-                  </button>
-                {/each}
-              </div>
-
-              <!-- Subcategories (Groups) -->
-              {#if selectedMainCategory}
-                <div class="mt-3">
-                  <div class="flex flex-wrap items-center gap-2">
-                    {#each categories.find(c => c.main === selectedMainCategory)?.subcategories ?? [] as group}
-                      <button
-                        on:click={() => selectSubCategory(group.group, '')}
-                        class="px-2.5 py-1 rounded-full text-xs transition-all duration-200
-                          {selectedGroup === group.group
-                            ? 'bg-orange-100 text-orange-700 font-medium shadow-sm' 
-                            : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'}"
-                      >
-                        {group.group}
-                      </button>
-                    {/each}
-                  </div>
-                </div>
-              {/if}
-
-              <!-- Third-level Categories -->
-              {#if selectedMainCategory && selectedGroup}
-                <div class="mt-2">
-                  <div class="flex flex-wrap items-center gap-2">
-                    {#each categories
-                      .find(c => c.main === selectedMainCategory)
-                      ?.subcategories.find(g => g.group === selectedGroup)
-                      ?.subcategories ?? [] as subcategory}
-                      <button
-                        on:click={() => selectSubCategory(selectedGroup || '', subcategory)}
-                        class="px-2 py-0.5 rounded text-xs transition-all duration-200
-                          {selectedSubCategory === subcategory
-                            ? 'bg-orange-50 text-orange-600 font-medium border border-orange-100' 
-                            : 'text-gray-500 hover:text-gray-700'}"
-                      >
-                        {subcategory}
-                      </button>
-                    {/each}
-                  </div>
-                </div>
-              {/if}
-            </div>
-
-            <!-- Sort Dropdown -->
-            <div class="w-48 flex-shrink-0">
+          <div class="flex flex-col gap-4">
+            <!-- Sort Dropdown - Moved to top for better mobile UX -->
+            <div class="w-full sm:w-48">
               <select 
                 bind:value={sortBy}
                 class="w-full px-3 py-2 text-sm rounded-lg bg-gray-50 border-none focus:ring-2 focus:ring-orange-500/20 transition-all duration-200 appearance-none"
@@ -324,54 +284,165 @@
                 <option value="nameDesc">Name: Z-A</option>
               </select>
             </div>
+
+            <!-- Category Filters -->
+            <div class="flex-1 min-w-0">
+              <!-- Main Categories -->
+              <div class="overflow-x-auto pb-2 -mx-3 px-3">
+                <div class="flex gap-2 min-w-max">
+                  {#each categories as category}
+                    <button
+                      on:click={() => selectCategory(category.name)}
+                      class="inline-flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex-shrink-0
+                        {selectedCategory === category.name 
+                          ? 'bg-orange-500 text-white shadow-sm' 
+                          : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}"
+                    >
+                      {@html category.icon}
+                      <span class="text-xs font-medium whitespace-nowrap">{category.name}</span>
+                    </button>
+                  {/each}
+                </div>
+              </div>
+
+              <!-- Subcategories (Groups) -->
+              {#if selectedCategory}
+                <div class="mt-3">
+                  <div class="overflow-x-auto pb-2 -mx-3 px-3">
+                    <div class="flex gap-2 min-w-max">
+                      {#each Object.entries(categories.find(c => c.name === selectedCategory)?.groups ?? {}).filter(([_, value]) => Array.isArray(value)) as [groupName, subcategories]}
+                        <button
+                          on:click={() => selectSubcategory(groupName, '')}
+                          class="px-3 py-1.5 rounded-lg text-xs transition-all duration-200 flex-shrink-0
+                            {selectedGroup === groupName
+                              ? 'bg-orange-100 text-orange-700 font-medium shadow-sm' 
+                              : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'}"
+                        >
+                          {groupName}
+                        </button>
+                      {/each}
+                    </div>
+                  </div>
+                </div>
+              {/if}
+
+              <!-- Third-level Categories -->
+              {#if selectedCategory && selectedGroup}
+                <div class="mt-2">
+                  <div class="overflow-x-auto pb-2 -mx-3 px-3">
+                    <div class="flex gap-2 min-w-max">
+                      {#each categories.find(c => c.name === selectedCategory)?.groups[selectedGroup] ?? [] as subcategory}
+                        <button
+                          on:click={() => selectSubcategory(selectedGroup ?? '', subcategory)}
+                          class="px-2.5 py-1 rounded-lg text-xs transition-all duration-200 flex-shrink-0
+                            {selectedSubcategory === subcategory
+                              ? 'bg-orange-50 text-orange-600 font-medium border border-orange-100' 
+                              : 'text-gray-500 hover:text-gray-700'}"
+                        >
+                          {subcategory}
+                        </button>
+                      {/each}
+                    </div>
+                  </div>
+                </div>
+              {/if}
+            </div>
           </div>
         </div>
 
         <!-- Products Grid -->
-        {#each categories as category}
-          {@const categoryItems = filteredItems.filter(item => item.category.startsWith(category.main))}
+        {#if selectedCategory}
+          <!-- If a category is selected, show only its products -->
+          {@const categoryItems = getCategoryItems(selectedCategory)}
           {#if categoryItems.length > 0}
             <div class="mb-8">
               <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span class="material-symbols-outlined text-orange-500">category</span>
-                {category.main}
+                {@html currentCategory?.icon || '<iconify-icon icon="material-symbols:category" class="text-orange-500"></iconify-icon>'}
+                {selectedCategory}
               </h2>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-                {#each categoryItems as item}
-                  <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300">
-                    <!-- Product Image -->
-                    <div class="relative h-32 w-full overflow-hidden bg-gray-100">
-                      <img
-                        src={item.thumbnail || 'https://via.placeholder.com/300'}
-                        alt={item.itemName}
-                        class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
-                    </div>
+              <div class="overflow-x-auto pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+                <div class="flex gap-3 min-w-max">
+                  {#each categoryItems as item}
+                    <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0">
+                      <!-- Product Image -->
+                      <div class="relative h-32 w-full overflow-hidden bg-gray-100">
+                        <img
+                          src={item.thumbnail || 'https://via.placeholder.com/300'}
+                          alt={item.itemName}
+                          class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
+                      </div>
 
-                    <!-- Product Info -->
-                    <div class="p-2">
-                      <h3 class="text-sm font-semibold text-gray-900 mb-1 truncate">{item.itemName}</h3>
-                      
-                      <div class="flex items-center justify-between pt-1 border-t border-gray-100">
-                        <span class="text-sm font-semibold text-orange-600">
-                          {formatPrice(item.price)}
-                        </span>
-                        <button
-                          on:click={() => goto(`/product/${item.id}`)}
-                          class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
-                        >
-                          <span class="material-symbols-outlined text-sm mr-0.5">visibility</span>
-                          View
-                        </button>
+                      <!-- Product Info -->
+                      <div class="p-2">
+                        <h3 class="text-sm font-semibold text-gray-900 mb-1 truncate">{item.itemName}</h3>
+                        <div class="flex items-center justify-between pt-1 border-t border-gray-100">
+                          <span class="text-sm font-semibold text-orange-600">
+                            {formatPrice(item.price)}
+                          </span>
+                          <button
+                            on:click={() => goto(`/product/${item.id}`)}
+                            class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+                          >
+                            <span class="material-symbols-outlined text-sm mr-0.5">visibility</span>
+                            View
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                {/each}
+                  {/each}
+                </div>
               </div>
             </div>
           {/if}
-        {/each}
+        {:else}
+          <!-- If no category is selected, group products under each category -->
+          {#each categories as category}
+            {#if getCategoryItemsByName(category.name).length > 0}
+              <div class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  {@html category.icon}
+                  {category.name}
+                </h2>
+                <div class="overflow-x-auto pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+                  <div class="flex gap-3 min-w-max">
+                    {#each getCategoryItemsByName(category.name) as item}
+                      <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0">
+                        <!-- Product Image -->
+                        <div class="relative h-32 w-full overflow-hidden bg-gray-100">
+                          <img
+                            src={item.thumbnail || 'https://via.placeholder.com/300'}
+                            alt={item.itemName}
+                            class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
+                        </div>
+
+                        <!-- Product Info -->
+                        <div class="p-2">
+                          <h3 class="text-sm font-semibold text-gray-900 mb-1 truncate">{item.itemName}</h3>
+                          <div class="flex items-center justify-between pt-1 border-t border-gray-100">
+                            <span class="text-sm font-semibold text-orange-600">
+                              {formatPrice(item.price)}
+                            </span>
+                            <button
+                              on:click={() => goto(`/product/${item.id}`)}
+                              class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+                            >
+                              <span class="material-symbols-outlined text-sm mr-0.5">visibility</span>
+                              View
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              </div>
+            {/if}
+          {/each}
+        {/if}
 
         <!-- Empty State -->
         {#if filteredItems.length === 0}
@@ -397,3 +468,23 @@
     </div>
   </div>
 {/if}
+
+<style>
+  :global(iconify-icon) {
+    width: 32px;
+    height: 32px;
+    transition: color 0.2s ease-in-out;
+    color: rgb(249 115 22); /* text-orange-500 */
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .overflow-x-auto::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .overflow-x-auto {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+</style>

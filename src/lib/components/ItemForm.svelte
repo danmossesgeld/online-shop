@@ -319,6 +319,7 @@
 
       <!-- Category Selection -->
       <div class="space-y-2">
+        <!-- svelte-ignore a11y_label_has_associated_control -->
         <label class="block text-base font-bold text-orange-500">Category</label>
         <div class="grid grid-cols-1 gap-2">
           <!-- Main Category -->
@@ -446,6 +447,7 @@
               <div class="flex gap-2 overflow-x-auto pb-2">
                 {#each currentImageUrls as imageUrl, index}
                   <div class="relative group">
+                    <!-- svelte-ignore a11y_img_redundant_alt -->
                     <img
                       src={imageUrl}
                       alt="Product image"
