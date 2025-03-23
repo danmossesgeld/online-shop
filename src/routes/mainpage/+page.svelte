@@ -19,9 +19,9 @@
   let adminEmails: string[] = [];
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PH', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'PHP'
     }).format(price);
   };
 
@@ -328,39 +328,50 @@
         </div>
 
         <!-- Products Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {#each filteredItems as item}
-            <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300">
-              <!-- Product Image -->
-              <div class="relative h-48 w-full overflow-hidden bg-gray-100">
-                <img
-                  src={item.thumbnail || 'https://via.placeholder.com/300'}
-                  alt={item.itemName}
-                  class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
-                />
-                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
-              </div>
+        {#each categories as category}
+          {@const categoryItems = filteredItems.filter(item => item.category.startsWith(category.main))}
+          {#if categoryItems.length > 0}
+            <div class="mb-8">
+              <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-orange-500">category</span>
+                {category.main}
+              </h2>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                {#each categoryItems as item}
+                  <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300">
+                    <!-- Product Image -->
+                    <div class="relative h-32 w-full overflow-hidden bg-gray-100">
+                      <img
+                        src={item.thumbnail || 'https://via.placeholder.com/300'}
+                        alt={item.itemName}
+                        class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
+                    </div>
 
-              <!-- Product Info -->
-              <div class="p-3">
-                <h3 class="text-base font-semibold text-gray-900 mb-2 truncate">{item.itemName}</h3>
-                
-                <div class="flex items-center justify-between pt-2 border-t border-gray-100">
-                  <span class="text-base font-semibold text-orange-600">
-                    {formatPrice(item.price)}
-                  </span>
-                  <button
-                    on:click={() => goto(`/product/${item.id}`)}
-                    class="inline-flex items-center px-2 py-1 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
-                  >
-                    <span class="material-symbols-outlined text-base mr-1">visibility</span>
-                    View
-                  </button>
-                </div>
+                    <!-- Product Info -->
+                    <div class="p-2">
+                      <h3 class="text-sm font-semibold text-gray-900 mb-1 truncate">{item.itemName}</h3>
+                      
+                      <div class="flex items-center justify-between pt-1 border-t border-gray-100">
+                        <span class="text-sm font-semibold text-orange-600">
+                          {formatPrice(item.price)}
+                        </span>
+                        <button
+                          on:click={() => goto(`/product/${item.id}`)}
+                          class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+                        >
+                          <span class="material-symbols-outlined text-sm mr-0.5">visibility</span>
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                {/each}
               </div>
             </div>
-          {/each}
-        </div>
+          {/if}
+        {/each}
 
         <!-- Empty State -->
         {#if filteredItems.length === 0}
