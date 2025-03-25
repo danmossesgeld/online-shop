@@ -85,9 +85,24 @@ function createCart() {
     }
   };
 
-  // Initialize cart
+  // Initialize cart and set up auth state listener
   if (browser) {
+    // Initial load
     loadCart();
+
+    // Set up auth state listener
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        loadCart();
+      } else {
+        set([]);
+      }
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('unload', () => {
+      unsubscribe();
+    });
   }
 
   const store = {

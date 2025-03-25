@@ -49,6 +49,10 @@
   let selectedGroup: string | null = null;
   let selectedSubcategory: string | null = null;
   let currentCategory: Category | null = null;
+  let isSearchActive = false;
+
+  // Add new state for expanded categories
+  let expandedCategories: Set<string> = new Set();
 
   // Reactive statement to update currentCategory
   $: {
@@ -70,6 +74,13 @@
     const q = $page.url.searchParams.get('q');
     if (q !== null) {
       searchQuery = q;
+      isSearchActive = true;
+    } else {
+      isSearchActive = false;
+    }
+    const category = $page.url.searchParams.get('category');
+    if (category !== null) {
+      selectCategory(category);
     }
   }
 
@@ -243,15 +254,27 @@
     }
   };
 
-  // Utility function to filter items by category name
-  const getCategoryItems = (categoryName: string | null): Item[] => {
+  // Modify the getCategoryItems function to handle limits
+  const getCategoryItems = (categoryName: string | null, limit?: number): Item[] => {
     if (!categoryName) return [];
-    return filteredItems.filter(item => item.category.startsWith(categoryName));
+    const items = filteredItems.filter(item => item.category.startsWith(categoryName));
+    return limit ? items.slice(0, limit) : items;
   };
 
-  // Helper function for non-null category names
-  const getCategoryItemsByName = (categoryName: string): Item[] => {
-    return filteredItems.filter(item => item.category.startsWith(categoryName));
+  // Helper function for non-null category names with limit
+  const getCategoryItemsByName = (categoryName: string, limit?: number): Item[] => {
+    const items = filteredItems.filter(item => item.category.startsWith(categoryName));
+    return limit ? items.slice(0, limit) : items;
+  };
+
+  // Function to toggle category expansion
+  const toggleCategory = (categoryName: string) => {
+    if (expandedCategories.has(categoryName)) {
+      expandedCategories.delete(categoryName);
+    } else {
+      expandedCategories.add(categoryName);
+    }
+    expandedCategories = expandedCategories; // Trigger reactivity
   };
 </script>
 
@@ -260,13 +283,35 @@
 </svelte:head>
 
 {#if loading}
-  <LoadingSpinner message="Loading products..." fullScreen={true} color="orange" />
+  <LoadingSpinner message="Loading products and categories..." fullScreen={true} color="orange" />
 {:else if $error}
-  <div class="text-red-500 text-center p-6 bg-red-50 rounded-lg max-w-md mx-auto mt-8">
-    <span class="material-symbols-outlined text-2xl mb-2">error</span>
-    <p>{$error}</p>
+  <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div class="text-center p-8">
+      <span class="material-symbols-outlined text-5xl text-red-500 mb-4">error</span>
+      <h1 class="text-2xl font-semibold text-gray-700 mb-2">Error</h1>
+      <p class="text-gray-500 mb-6">{$error}</p>
+      <button
+        on:click={() => window.location.reload()}
+        class="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-200"
+      >
+        <span class="material-symbols-outlined mr-2">refresh</span>
+        Try Again
+      </button>
+    </div>
   </div>
-{:else if user}
+{:else if !user}
+  <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div class="text-center p-8">
+      <span class="material-symbols-outlined text-5xl text-gray-400 mb-4">lock</span>
+      <h1 class="text-2xl font-semibold text-gray-700 mb-2">Please Log In</h1>
+      <p class="text-gray-500 mb-6">You need to be logged in to view this page.</p>
+      <a href="/login" class="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-200">
+        <span class="material-symbols-outlined mr-2">login</span>
+        Log In
+      </a>
+    </div>
+  </div>
+{:else}
   <div class="min-h-screen bg-gray-50">
     <Navbar />
 
@@ -292,67 +337,92 @@
             </div>
 
             <!-- Category Filters -->
-            <div class="flex-1 min-w-0">
-              <!-- Main Categories -->
-              <div class="overflow-x-auto pb-2 -mx-3 px-3">
-                <div class="flex gap-2 min-w-max">
-                  {#each categories as category}
-                    <button
-                      on:click={() => selectCategory(category.name)}
-                      class="inline-flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex-shrink-0
-                        {selectedCategory === category.name 
-                          ? 'bg-orange-500 text-white shadow-sm' 
-                          : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}"
-                    >
-                      {@html category.icon}
-                      <span class="text-xs font-medium whitespace-nowrap">{category.name}</span>
-                    </button>
-                  {/each}
+            {#if !isSearchActive}
+              <div class="flex-1 min-w-0">
+                <!-- Main Categories -->
+                <div class="overflow-x-auto pb-2 -mx-3 px-3">
+                  <div class="flex gap-3 min-w-max">
+                    {#each categories as category}
+                      <button
+                        on:click={() => selectCategory(category.name)}
+                        class="group relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex-shrink-0 w-[72px]
+                          {selectedCategory === category.name 
+                            ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/20' 
+                            : 'bg-white hover:bg-orange-50 text-gray-700 hover:text-orange-600 border border-gray-100 hover:border-orange-200 shadow-sm hover:shadow-md'}"
+                      >
+                        <div class="relative flex items-center justify-center w-full h-7">
+                          {@html category.icon}
+                          {#if selectedCategory === category.name}
+                            <div class="absolute inset-0 animate-ping-slow bg-white/20 rounded-full"></div>
+                          {/if}
+                        </div>
+                        <span class="text-[11px] font-medium text-center leading-[1.2] w-full">{category.name}</span>
+                      </button>
+                    {/each}
+                  </div>
                 </div>
+
+                <!-- Subcategories (Groups) -->
+                {#if selectedCategory}
+                  <div class="mt-4">
+                    <div class="overflow-x-auto pb-2 -mx-3 px-3">
+                      <div class="flex gap-2 min-w-max">
+                        {#each Object.entries(categories.find(c => c.name === selectedCategory)?.groups ?? {}).filter(([_, value]) => Array.isArray(value)) as [groupName, subcategories]}
+                          <button
+                            on:click={() => selectSubcategory(groupName, '')}
+                            class="relative px-4 py-2 rounded-lg text-sm transition-all duration-200 flex-shrink-0
+                              {selectedGroup === groupName
+                                ? 'bg-orange-100 text-orange-700 font-medium shadow-sm before:absolute before:inset-x-0 before:-bottom-2 before:h-0.5 before:bg-orange-500 before:rounded-full' 
+                                : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-orange-600 border border-gray-100'}"
+                          >
+                            {groupName}
+                          </button>
+                        {/each}
+                      </div>
+                    </div>
+                  </div>
+                {/if}
+
+                <!-- Third-level Categories -->
+                {#if selectedCategory && selectedGroup}
+                  <div class="mt-3">
+                    <div class="overflow-x-auto pb-2 -mx-3 px-3">
+                      <div class="flex flex-wrap gap-2 min-w-max">
+                        {#each categories.find(c => c.name === selectedCategory)?.groups[selectedGroup] ?? [] as subcategory}
+                          <button
+                            on:click={() => selectSubcategory(selectedGroup ?? '', subcategory)}
+                            class="inline-flex items-center px-3 py-1.5 rounded-full text-xs transition-all duration-200 flex-shrink-0
+                              {selectedSubcategory === subcategory
+                                ? 'bg-orange-500 text-white font-medium shadow-sm' 
+                                : 'bg-gray-50 text-gray-600 hover:bg-orange-50 hover:text-orange-600'}"
+                          >
+                            <span class="material-symbols-outlined text-[16px] mr-1">
+                              {selectedSubcategory === subcategory ? 'check_circle' : 'radio_button_unchecked'}
+                            </span>
+                            {subcategory}
+                          </button>
+                        {/each}
+                      </div>
+                    </div>
+                  </div>
+                {/if}
               </div>
-
-              <!-- Subcategories (Groups) -->
-              {#if selectedCategory}
-                <div class="mt-3">
-                  <div class="overflow-x-auto pb-2 -mx-3 px-3">
-                    <div class="flex gap-2 min-w-max">
-                      {#each Object.entries(categories.find(c => c.name === selectedCategory)?.groups ?? {}).filter(([_, value]) => Array.isArray(value)) as [groupName, subcategories]}
-                        <button
-                          on:click={() => selectSubcategory(groupName, '')}
-                          class="px-3 py-1.5 rounded-lg text-xs transition-all duration-200 flex-shrink-0
-                            {selectedGroup === groupName
-                              ? 'bg-orange-100 text-orange-700 font-medium shadow-sm' 
-                              : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'}"
-                        >
-                          {groupName}
-                        </button>
-                      {/each}
-                    </div>
-                  </div>
-                </div>
-              {/if}
-
-              <!-- Third-level Categories -->
-              {#if selectedCategory && selectedGroup}
-                <div class="mt-2">
-                  <div class="overflow-x-auto pb-2 -mx-3 px-3">
-                    <div class="flex gap-2 min-w-max">
-                      {#each categories.find(c => c.name === selectedCategory)?.groups[selectedGroup] ?? [] as subcategory}
-                        <button
-                          on:click={() => selectSubcategory(selectedGroup ?? '', subcategory)}
-                          class="px-2.5 py-1 rounded-lg text-xs transition-all duration-200 flex-shrink-0
-                            {selectedSubcategory === subcategory
-                              ? 'bg-orange-50 text-orange-600 font-medium border border-orange-100' 
-                              : 'text-gray-500 hover:text-gray-700'}"
-                        >
-                          {subcategory}
-                        </button>
-                      {/each}
-                    </div>
-                  </div>
-                </div>
-              {/if}
-            </div>
+            {:else}
+              <!-- Search Results Header -->
+              <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-gray-900">Search Results for "{searchQuery}"</h2>
+                <button
+                  on:click={() => {
+                    searchQuery = '';
+                    window.location.href = '/mainpage';
+                  }}
+                  class="inline-flex items-center px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                >
+                  <span class="material-symbols-outlined text-sm mr-1">clear</span>
+                  Clear Search
+                </button>
+              </div>
+            {/if}
           </div>
         </div>
 
@@ -366,44 +436,78 @@
                 {@html currentCategory?.icon || '<iconify-icon icon="material-symbols:category" class="text-orange-500"></iconify-icon>'}
                 {selectedCategory}
               </h2>
-              <div class="overflow-x-auto pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-                <div class="flex gap-3 min-w-max">
-                  {#each categoryItems as item}
-                    <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0">
-                      <!-- Product Image -->
-                      <div class="relative h-32 w-full overflow-hidden bg-gray-100">
+              
+              <!-- Vertical grid layout for selected category -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {#each getCategoryItems(selectedCategory, expandedCategories.has(selectedCategory || '') ? undefined : 20) as item}
+                  <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 flex flex-col">
+                    <!-- Product Image -->
+                    <div class="relative h-40 w-full overflow-hidden bg-gray-100">
+                      <button
+                        on:click={() => goto(`/product/${item.id}`)}
+                        class="w-full h-full p-0 border-none bg-transparent cursor-pointer"
+                      >
                         <img
-                          src={item.thumbnail || 'https://via.placeholder.com/300'}
+                          src={item.thumbnail || 'https://via.placeholder.com/300?text=No+Image'}
                           alt={item.itemName}
                           class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                          decoding="async"
+                          on:error={(e: Event) => {
+                            const img = e.currentTarget as HTMLImageElement;
+                            img.src = 'https://via.placeholder.com/300?text=No+Image';
+                          }}
                         />
                         <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
-                      </div>
+                      </button>
+                    </div>
 
-                      <!-- Product Info -->
-                      <div class="p-2">
-                        <h3 class="text-sm font-semibold text-gray-900 mb-1 truncate">{item.itemName}</h3>
-                        <div class="flex items-center justify-between pt-1 border-t border-gray-100">
-                          <span class="text-sm font-semibold text-orange-600">
-                            {formatPrice(item.price)}
-                          </span>
-                          <button
-                            on:click={() => goto(`/product/${item.id}`)}
-                            class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
-                          >
-                            <span class="material-symbols-outlined text-sm mr-0.5">visibility</span>
-                            View
-                          </button>
-                        </div>
+                    <!-- Product Info -->
+                    <div class="p-3 flex-grow flex flex-col">
+                      <h3 class="text-sm font-semibold text-gray-900 mb-1 truncate">{item.itemName}</h3>
+                      <div class="flex items-center justify-between pt-1 mt-auto border-t border-gray-100">
+                        <span class="text-sm font-semibold text-orange-600">
+                          {formatPrice(item.price)}
+                        </span>
+                        <button
+                          on:click={() => goto(`/product/${item.id}`)}
+                          class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+                        >
+                          <span class="material-symbols-outlined text-sm mr-0.5">visibility</span>
+                          View
+                        </button>
                       </div>
                     </div>
-                  {/each}
-                </div>
+                  </div>
+                {/each}
               </div>
+              
+              <!-- Show more button at the end of the grid -->
+              {#if categoryItems.length > 20 && !expandedCategories.has(selectedCategory || '')}
+                <div class="flex justify-center mt-6">
+                  <button
+                    on:click={() => toggleCategory(selectedCategory || '')}
+                    class="inline-flex items-center px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-orange-50 hover:border-orange-200 transition-all duration-200"
+                  >
+                    <span class="material-symbols-outlined text-orange-500 mr-2">expand_more</span>
+                    <span class="text-sm font-medium text-orange-600">Show More Items</span>
+                  </button>
+                </div>
+              {:else if expandedCategories.has(selectedCategory || '') && categoryItems.length > 20}
+                <div class="flex justify-center mt-6">
+                  <button
+                    on:click={() => toggleCategory(selectedCategory || '')}
+                    class="inline-flex items-center px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-orange-50 hover:border-orange-200 transition-all duration-200"
+                  >
+                    <span class="material-symbols-outlined text-orange-500 mr-2">expand_less</span>
+                    <span class="text-sm font-medium text-orange-600">Show Less</span>
+                  </button>
+                </div>
+              {/if}
             </div>
           {/if}
         {:else}
-          <!-- If no category is selected, group products under each category -->
+          <!-- If no category is selected, group products under each category with horizontal scrolling -->
           {#each categories as category}
             {#if getCategoryItemsByName(category.name).length > 0}
               <div class="mb-8">
@@ -411,18 +515,31 @@
                   {@html category.icon}
                   {category.name}
                 </h2>
+                
+                <!-- Horizontal scroll layout for default view -->
                 <div class="overflow-x-auto pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
                   <div class="flex gap-3 min-w-max">
-                    {#each getCategoryItemsByName(category.name) as item}
+                    {#each getCategoryItemsByName(category.name, expandedCategories.has(category.name) ? undefined : 2) as item}
                       <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0">
                         <!-- Product Image -->
                         <div class="relative h-32 w-full overflow-hidden bg-gray-100">
-                          <img
-                            src={item.thumbnail || 'https://via.placeholder.com/300'}
-                            alt={item.itemName}
-                            class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
+                          <button
+                            on:click={() => goto(`/product/${item.id}`)}
+                            class="w-full h-full p-0 border-none bg-transparent cursor-pointer"
+                          >
+                            <img
+                              src={item.thumbnail || 'https://via.placeholder.com/300?text=No+Image'}
+                              alt={item.itemName}
+                              class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
+                              loading="lazy"
+                              decoding="async"
+                              on:error={(e: Event) => {
+                                const img = e.currentTarget as HTMLImageElement;
+                                img.src = 'https://via.placeholder.com/300?text=No+Image';
+                              }}
+                            />
+                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
+                          </button>
                         </div>
 
                         <!-- Product Info -->
@@ -443,6 +560,21 @@
                         </div>
                       </div>
                     {/each}
+                    {#if getCategoryItemsByName(category.name).length > 2}
+                      <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0">
+                        <button
+                          on:click={() => toggleCategory(category.name)}
+                          class="w-full h-full flex flex-col items-center justify-center p-4 text-center hover:bg-gray-50 transition-colors duration-200"
+                        >
+                          <span class="material-symbols-outlined text-3xl text-orange-500 mb-2">
+                            {expandedCategories.has(category.name) ? 'chevron_left' : 'chevron_right'}
+                          </span>
+                          <span class="text-sm font-medium text-orange-600">
+                            {expandedCategories.has(category.name) ? 'Show Less' : 'See More'}
+                          </span>
+                        </button>
+                      </div>
+                    {/if}
                   </div>
                 </div>
               </div>
@@ -461,25 +593,18 @@
       </div>
     </div>
   </div>
-{:else}
-  <div class="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div class="text-center p-8">
-      <span class="material-symbols-outlined text-5xl text-gray-400 mb-4">lock</span>
-      <h1 class="text-2xl font-semibold text-gray-700 mb-2">Please Log In</h1>
-      <p class="text-gray-500 mb-6">You need to be logged in to view this page.</p>
-      <a href="/login" class="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-200">
-        <span class="material-symbols-outlined mr-2">login</span>
-        Log In
-      </a>
-    </div>
-  </div>
 {/if}
 <style>
   :global(iconify-icon) {
-    width: 32px;
-    height: 32px;
-    transition: color 0.2s ease-in-out;
+    width: 24px;
+    height: 24px;
+    transition: all 0.2s ease-in-out;
     color: rgb(249 115 22); /* text-orange-500 */
+  }
+
+  :global(.bg-gradient-to-br iconify-icon) {
+    color: white;
+    transform: scale(1.1);
   }
 
   /* Hide scrollbar for Chrome, Safari and Opera */
@@ -491,6 +616,17 @@
   .overflow-x-auto {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
+  }
+
+  @keyframes ping-slow {
+    75%, 100% {
+      transform: scale(1.5);
+      opacity: 0;
+    }
+  }
+
+  .animate-ping-slow {
+    animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
   }
 </style>
 

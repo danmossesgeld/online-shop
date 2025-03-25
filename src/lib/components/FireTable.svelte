@@ -81,30 +81,30 @@
   );
 </script>
 
-<div class="bg-white rounded-lg flex flex-col h-full">
+<div class="bg-white rounded-lg flex flex-col h-full w-full">
   <!-- Search, Sort and Count -->
-  <div class="flex flex-wrap items-center justify-between gap-3 p-3 border-b border-gray-100">
+  <div class="flex flex-wrap items-center justify-between gap-3 p-2 border-b border-gray-100">
     <!-- Search -->
-    <div class="relative w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
+    <div class="relative w-full sm:w-auto sm:min-w-[180px] sm:max-w-xs">
       <input
         type="text"
         bind:value={searchQuery}
         placeholder="Search items..."
-        class="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
+        class="w-full pl-8 pr-3 py-1 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
         aria-label="Search items"
       />
-      <span class="material-symbols-outlined absolute left-2 top-1.5 text-gray-400 text-lg">search</span>
+      <span class="material-symbols-outlined absolute left-2 top-1 text-gray-400 text-lg">search</span>
     </div>
 
     <!-- Right Side Controls -->
-    <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+    <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
       <!-- Sort Controls -->
       {#if sortableColumns.length > 0}
-        <div class="flex items-center gap-2 min-w-[150px] max-w-[200px]">
+        <div class="flex items-center gap-2 min-w-[120px] max-w-[180px]">
           <select
             id="sortField"
             bind:value={sortField}
-            class="w-full text-sm border border-gray-200 rounded-lg py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
+            class="w-full text-sm border border-gray-200 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
             aria-label="Sort by"
           >
             <option value="">Sort by</option>
@@ -149,13 +149,13 @@
     </div>
   {:else}
     <div class="flex-1 overflow-x-auto">
-      <div class="min-w-full inline-block align-middle">
-        <table class="min-w-full table-auto divide-y divide-gray-100" role="table">
+      <div class="w-full inline-block align-middle">
+        <table class="w-full table-auto divide-y divide-gray-100" role="table">
           <thead>
             <tr class="bg-gray-50/50">
               {#each enhancedColumns as column}
                 <th 
-                  class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   style="width: {column.width}; min-width: {column.minWidth}; max-width: {column.maxWidth}"
                   scope="col"
                 >
@@ -163,8 +163,8 @@
                 </th>
               {/each}
               <th 
-                class="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" 
-                style="width: 80px; min-width: 80px"
+                class="px-1.5 py-1.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                style="width: 70px; min-width: 70px"
                 scope="col"
               >
                 Actions
@@ -176,7 +176,7 @@
               <tr class="hover:bg-gray-50/50 transition-colors duration-150">
                 {#each enhancedColumns as column}
                   <td 
-                    class="px-3 py-2 whitespace-nowrap text-center"
+                    class="px-2 py-1.5 whitespace-nowrap"
                     style="width: {column.width}; min-width: {column.minWidth}; max-width: {column.maxWidth}"
                   >
                     {#if column.component}
@@ -188,7 +188,7 @@
                     {/if}
                   </td>
                 {/each}
-                <td class="px-2 py-2 whitespace-nowrap" style="width: 80px; min-width: 80px">
+                <td class="px-1.5 py-1.5 whitespace-nowrap" style="width: 70px; min-width: 70px">
                   <div class="flex justify-center">
                     <ItemActions
                       itemId={item.id}

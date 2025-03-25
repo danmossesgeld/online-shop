@@ -4,7 +4,7 @@
     import { signOut, type User } from 'firebase/auth';
     import { cart, cartCount, cartTotal, removeFromCart, updateCartQuantity, clearCart } from '$lib/store/cart';
     import { onMount, onDestroy } from 'svelte';
-    import { goto } from '$app/navigation';
+    import { goto, invalidateAll } from '$app/navigation';
     import { page } from '$app/stores';
     import { getFirestore, collection, getDocs, type DocumentData } from 'firebase/firestore';
     import { searchProducts } from '$lib/store/products';
@@ -40,6 +40,18 @@
     let allItems: SearchItem[] = [];
     const error = writable('');
     const db = getFirestore();
+    let isRefreshing = false;
+
+    // Subscribe to auth state changes
+    const unsubscribe = auth.onAuthStateChanged((newUser) => {
+        user = newUser;
+        loading = false;
+    });
+
+    // Cleanup on component destroy
+    onDestroy(() => {
+        unsubscribe();
+    });
 
     // Utility functions
     const formatPrice = (price: number): string => {
@@ -68,15 +80,36 @@
         e.preventDefault();
         const trimmedQuery = searchQuery.trim();
         if (trimmedQuery) {
-            goto(`/mainpage?q=${encodeURIComponent(trimmedQuery)}`);
+            // Get current category from URL if it exists
+            const currentCategory = $page.url.searchParams.get('category');
+            // Build URL with both search and category parameters if they exist
+            const searchParams = new URLSearchParams();
+            searchParams.set('q', trimmedQuery);
+            if (currentCategory) {
+                searchParams.set('category', currentCategory);
+            }
+            goto(`/mainpage?${searchParams.toString()}`);
             showSearchDropdown = false;
         }
     };
 
-    const selectSearchResult = (item: SearchItem): void => {
-        searchQuery = item.itemName;
-        goto(`/mainpage?q=${encodeURIComponent(item.itemName)}`);
-        showSearchDropdown = false;
+    const selectSearchResult = async (item: SearchItem): Promise<void> => {
+        if (!user) {
+            notifications.add('Please log in to view product details', 'error');
+            await goto('/login', { replaceState: true });
+            return;
+        }
+
+        try {
+            // First navigate to the product page
+            await goto(`/product/${item.id}`, { replaceState: true });
+            // Then update the search query
+            searchQuery = item.itemName;
+            showSearchDropdown = false;
+        } catch (err) {
+            console.error('Error navigating to product:', err);
+            notifications.add('Error loading product details', 'error');
+        }
     };
 
     const handleRemoveFromCart = (itemId: string, selectedVariations?: Record<string, string> | null): void => {
@@ -98,6 +131,25 @@
         } catch (err) {
             console.error('Error logging out:', err);
             notifications.add('Error logging out', 'error');
+        }
+    };
+
+    const resetHome = async (): Promise<void> => {
+        try {
+            isRefreshing = true;
+            
+            // Clear search query and results
+            searchQuery = '';
+            searchResults = [];
+            showSearchDropdown = false;
+            
+            // Force a complete page reload to reset all state
+            window.location.href = '/mainpage';
+        } catch (err) {
+            console.error('Error resetting home:', err);
+            notifications.add('Error resetting home page', 'error');
+        } finally {
+            isRefreshing = false;
         }
     };
 
@@ -126,16 +178,10 @@
 
         fetchItems();
 
-        const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-            user = currentUser;
-            loading = false;
-        });
-        
         document.addEventListener('click', handleSearchClickOutside);
         document.addEventListener('click', handleCartClickOutside);
         
         return () => {
-            unsubscribe();
             document.removeEventListener('click', handleSearchClickOutside);
             document.removeEventListener('click', handleCartClickOutside);
         };
@@ -156,6 +202,14 @@
         }
     }
 
+    // Watch for URL changes to update search query
+    $: {
+        const q = $page.url.searchParams.get('q');
+        if (q !== null && q !== searchQuery) {
+            searchQuery = q;
+        }
+    }
+
     $: {
         if (showCart) {
             setTimeout(() => document.addEventListener('click', handleCartClickOutside));
@@ -170,15 +224,32 @@
         <span class="material-symbols-outlined animate-spin text-orange-500">sync</span>
     </div>
 {:else}
-    {#if user}
-        <nav class="fixed w-full bg-white/80 backdrop-blur-md text-gray-800 py-2 px-4 top-0 left-0 z-50 shadow-sm border-b border-gray-100">
-            <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
-                <a href="/mainpage" class="flex-shrink-0">
-                    <span class="text-lg font-bold text-orange-500 hover:text-orange-600 transition-all duration-300">
-                        SVELTESHOPEE
-                    </span>
-                </a>
+    <nav class="fixed w-full bg-white/80 backdrop-blur-md text-gray-800 py-2 px-4 top-0 left-0 z-50 shadow-sm border-b border-gray-100">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <button 
+                on:click={resetHome}
+                class="flex-shrink-0 group relative px-3 py-2 rounded-xl hover:bg-orange-50/30 transition-all duration-300"
+                disabled={isRefreshing}
+            >
+                <span class="text-lg font-bold text-orange-500 group-hover:text-orange-600 transition-all duration-300 flex items-center gap-2">
+                    {#if isRefreshing}
+                        <span class="material-symbols-outlined animate-spin text-orange-500">sync</span>
+                    {:else}
+                        <div class="relative flex items-center justify-center">
+                            <iconify-icon icon="ri:store-2-line" width="24" height="24"></iconify-icon>
+                        </div>
+                    {/if}
+                    <div class="relative overflow-hidden">
+                        <span class="relative inline-flex transition-transform duration-300 ease-out">
+                            <span class="text-orange-600/90">DOKI</span>
+                            <span class="text-orange-500 font-extrabold">SHOPPE</span>
+                        </span>
+                        <div class="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-orange-500/0 via-orange-500 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    </div>
+                </span>
+            </button>
 
+            {#if user}
                 <!-- Global Search -->
                 <div class="flex-1 max-w-3xl mx-auto relative">
                     <form on:submit={handleSearch} class="relative">
@@ -207,7 +278,17 @@
                                 >
                                     <div class="w-10 h-10 bg-gray-50 rounded flex-shrink-0 flex items-center justify-center">
                                         {#if item.thumbnail}
-                                            <img src={item.thumbnail} alt={item.itemName} class="w-8 h-8 object-contain" />
+                                            <img 
+                                                src={item.thumbnail} 
+                                                alt={item.itemName} 
+                                                class="w-8 h-8 object-contain"
+                                                loading="lazy"
+                                                decoding="async"
+                                                on:error={(e: Event) => {
+                                                    const img = e.currentTarget as HTMLImageElement;
+                                                    img.src = 'https://via.placeholder.com/300?text=No+Image';
+                                                }}
+                                            />
                                         {:else}
                                             <span class="material-symbols-outlined text-gray-400">image</span>
                                         {/if}
@@ -271,7 +352,17 @@
                                             <li class="flex items-start gap-4 p-3 bg-gray-50 rounded-lg">
                                                 <div class="w-20 h-20 bg-white rounded-lg flex-shrink-0 flex items-center justify-center border border-gray-100">
                                                     {#if item.thumbnail}
-                                                        <img src={item.thumbnail} alt={item.name} class="w-16 h-16 object-contain" />
+                                                        <img 
+                                                            src={item.thumbnail} 
+                                                            alt={item.name} 
+                                                            class="w-16 h-16 object-contain"
+                                                            loading="lazy"
+                                                            decoding="async"
+                                                            on:error={(e: Event) => {
+                                                                const img = e.currentTarget as HTMLImageElement;
+                                                                img.src = 'https://via.placeholder.com/300?text=No+Image';
+                                                            }}
+                                                        />
                                                     {:else}
                                                         <span class="material-symbols-outlined text-gray-400">image</span>
                                                     {/if}
@@ -346,16 +437,7 @@
                         {/if}
                     </div>
                 </div>
-            </div>
-        </nav>
-    {:else}
-        <nav class="fixed w-full bg-white/80 backdrop-blur-md text-gray-800 py-2 px-4 top-0 left-0 z-50 shadow-sm border-b border-gray-100">
-            <div class="max-w-7xl mx-auto flex items-center justify-between">
-                <a href="/mainpage" class="flex-shrink-0">
-                    <span class="text-lg font-bold text-orange-500 hover:text-orange-600 transition-all duration-300">
-                        SVELTESHOPEE
-                    </span>
-                </a>
+            {:else}
                 <div class="flex items-center gap-4">
                     <a
                         href="/login"
@@ -364,9 +446,9 @@
                         Login
                     </a>
                 </div>
-            </div>
-        </nav>
-    {/if}
+            {/if}
+        </div>
+    </nav>
 {/if}
 
 <style>
@@ -375,4 +457,14 @@
     ul::-webkit-scrollbar-track { background: transparent; }
     ul::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
     ul::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+
+    :global(iconify-icon) {
+        color: rgb(249 115 22);
+        transition: all 0.3s ease-out;
+    }
+
+    :global(.group:hover iconify-icon) {
+        color: rgb(234 88 12);
+        transform: scale(1.05);
+    }
 </style> 

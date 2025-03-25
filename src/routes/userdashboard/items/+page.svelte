@@ -17,6 +17,7 @@
     images: string[];
     createdAt: Date;
     itemId?: string;
+    [key: string]: unknown;  // Add index signature for TableItem compatibility
   }
 
   interface DeleteEventDetail {
@@ -39,23 +40,18 @@
       key: 'itemName',
       label: 'Name',
       sortable: true,
-      component: (item: Item) => `
+      component: (item: Record<string, unknown>) => `
         <div class="flex items-center">
-          <img src="${item.thumbnail}" alt="${item.itemName}" class="h-10 w-10 rounded-full object-cover mr-3" />
-          <div class="text-sm font-medium text-gray-900">${item.itemName}</div>
+          <img src="${item.thumbnail as string}" alt="${item.itemName as string}" class="h-10 w-10 rounded-full object-cover mr-3" />
+          <div class="text-sm font-medium text-gray-900">${item.itemName as string}</div>
         </div>
       `
-    },
-    {
-      key: 'category',
-      label: 'Category',
-      sortable: true
     },
     {
       key: 'price',
       label: 'Price',
       sortable: true,
-      formatter: (value: number) => formatPrice(value)
+      formatter: (value: unknown) => formatPrice(value as number)
     },
     {
       key: 'stock',
@@ -66,7 +62,7 @@
       key: 'createdAt',
       label: 'Created At',
       sortable: true,
-      formatter: (value: Date) => formatDate(value)
+      formatter: (value: unknown) => formatDate(value as Date)
     }
   ];
 
@@ -140,18 +136,18 @@
   };
 </script>
 
-<div class="max-w-full">
-  <div class="bg-white rounded-lg shadow-sm p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-semibold text-gray-700">Items List</h2>
+<div class="w-full">
+  <div class="bg-white rounded-lg shadow-sm p-4">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-semibold text-gray-700">Items List</h2>
       <button
         on:click={() => {
           goto('/userdashboard/items/create');
           notifications.add('Creating new item...', 'info');
         }}
-        class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-all duration-200 flex items-center gap-2 font-medium shadow-sm hover:shadow-md"
+        class="bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 transition-all duration-200 flex items-center gap-1.5 text-sm font-medium shadow-sm hover:shadow-md"
       >
-        <span class="material-symbols-outlined">add</span>
+        <span class="material-symbols-outlined text-base">add</span>
         Add New Item
       </button>
     </div>
@@ -163,7 +159,7 @@
       bind:searchQuery
       bind:sortField
       bind:sortDirection
-      on:delete={({ detail }: CustomEvent<DeleteEventDetail>) => handleDelete(detail.id, detail.data)}
+      on:delete={({ detail }) => handleDelete(detail.id, detail.data as Item)}
       on:update={handleUpdate}
     />
   </div>

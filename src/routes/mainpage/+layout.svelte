@@ -41,7 +41,6 @@
                 return;
             }
 
-            // Load items only after authentication is confirmed
             try {
                 const itemsSnapshot = await getDocs(collection(db, 'items'));
                 const items = itemsSnapshot.docs.map(doc => ({

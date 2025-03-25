@@ -15,7 +15,7 @@
   }
 
   // Props with strict types and required values
-  export let message: LoadingSpinnerProps['message'] = 'Loading...';
+  export let message: LoadingSpinnerProps['message'] = '';
   export let size: LoadingSpinnerProps['size'] = 'md';
   export let color: LoadingSpinnerProps['color'] = 'blue';
   export let fullScreen: LoadingSpinnerProps['fullScreen'] = false;
@@ -47,7 +47,6 @@
 
   // Computed classes
   $: spinnerClasses = [
-    'material-symbols-outlined',
     sizeClasses[size],
     colorClasses[color],
     bordered ? 'border-2 border-current rounded-full' : '',
@@ -73,15 +72,29 @@
     aria-describedby={loadingId}
   >
     <div class="flex flex-col items-center justify-center space-y-4">
-      <div class="flex items-center justify-center w-8 h-8">
-        <span 
-          class={spinnerClasses}
-          aria-hidden="true"
-        >
-          sync
-        </span>
-      </div>
-      <p class="text-gray-700 font-medium" id={loadingId}>{message}</p>
+      <svg 
+        class={spinnerClasses}
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+      >
+        <circle 
+          class="opacity-25" 
+          cx="12" 
+          cy="12" 
+          r="10" 
+          stroke="currentColor" 
+          stroke-width="4"
+        />
+        <path 
+          class="opacity-75" 
+          fill="currentColor" 
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        />
+      </svg>
+      {#if message}
+        <p class="text-gray-700 font-medium" id={loadingId}>{message}</p>
+      {/if}
     </div>
   </div>
 {:else}
@@ -93,15 +106,29 @@
     aria-describedby={loadingId}
   >
     <div class="flex flex-col items-center justify-center space-y-2">
-      <div class="flex items-center justify-center w-8 h-8">
-        <span 
-          class={spinnerClasses}
-          aria-hidden="true"
-        >
-          sync
-        </span>
-      </div>
-      <p class="text-gray-700 text-sm" id={loadingId}>{message}</p>
+      <svg 
+        class={spinnerClasses}
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+      >
+        <circle 
+          class="opacity-25" 
+          cx="12" 
+          cy="12" 
+          r="10" 
+          stroke="currentColor" 
+          stroke-width="4"
+        />
+        <path 
+          class="opacity-75" 
+          fill="currentColor" 
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        />
+      </svg>
+      {#if message}
+        <p class="text-gray-700 text-sm" id={loadingId}>{message}</p>
+      {/if}
     </div>
   </div>
 {/if}
@@ -122,19 +149,12 @@
     }
   }
 
-  /* Ensure the icon rotates around its center point */
-  .material-symbols-outlined {
-    transform-origin: center;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    will-change: transform;
-  }
-
-  /* Override Tailwind's animate-spin with optimized version */
+  /* Optimized spin animation */
   .animate-spin {
-    animation: spin 1s linear infinite;
+    animation: spin 0.8s linear infinite;
     will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   @keyframes spin {
@@ -144,5 +164,11 @@
     to {
       transform: rotate(360deg);
     }
+  }
+
+  /* Optimize SVG rendering */
+  svg {
+    shape-rendering: geometricPrecision;
+    text-rendering: geometricPrecision;
   }
 </style>
