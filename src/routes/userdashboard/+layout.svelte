@@ -190,94 +190,103 @@
       <!-- Sidebar -->
       <aside class="fixed inset-y-0 left-0 bg-white border-r border-gray-100 shadow-sm z-50 transition-all duration-300"
         class:w-72={showSidebar}
-        class:w-20={!showSidebar}
+        class:w-16={!showSidebar}
       >
         <div class="flex flex-col h-full relative">
           <!-- Toggle Sidebar Button -->
           <button
-            class="absolute -right-5 top-1/2 -translate-y-1/2 bg-white border border-gray-200 rounded-full p-2.5 shadow-lg hover:shadow-xl hover:bg-orange-50 hover:border-orange-200 transition-all duration-300 group z-50"
+            class="absolute -right-4 top-1/2 -translate-y-1/2 bg-white border border-gray-200 rounded-full p-1.5 shadow-lg hover:shadow-xl hover:bg-orange-50 hover:border-orange-200 transition-all duration-300 group z-50"
             on:click={() => showSidebar = !showSidebar}
             aria-label={showSidebar ? 'Hide Sidebar' : 'Show Sidebar'}
           >
-            <span class="material-symbols-outlined text-gray-600 group-hover:text-orange-600 transition-colors duration-300" style="font-variation-settings: 'FILL' 1">
+            <span class="material-symbols-outlined text-sm text-gray-600 group-hover:text-orange-600 transition-colors duration-300" style="font-variation-settings: 'FILL' 1">
               {showSidebar ? 'chevron_left' : 'chevron_right'}
             </span>
-            <div class="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap">
-              {showSidebar ? 'Hide Sidebar' : 'Show Sidebar'}
-            </div>
           </button>
 
           <!-- Logo -->
           <button 
             on:click={resetHome}
-            class="flex items-center justify-center h-20 border-b border-gray-100 text-orange-500 group relative px-3 py-2 w-full hover:bg-orange-50/30 transition-all duration-300"
+            class="flex items-center justify-center border-b border-gray-100 text-orange-500 group relative w-full hover:bg-orange-50/30 transition-all duration-300"
+            class:h-16={showSidebar}
+            class:h-12={!showSidebar}
             disabled={isRefreshing}
           >
             {#if isRefreshing}
               <span class="material-symbols-outlined animate-spin text-orange-500">sync</span>
             {:else}
               <div class="flex items-center gap-2">
-                <div class="relative flex items-center justify-center">
-                  <iconify-icon icon="ri:store-2-line" width="24" height="24"></iconify-icon>
-                </div>
                 {#if showSidebar}
-                  <div class="relative overflow-hidden">
-                    <span class="relative inline-flex transition-transform duration-300 ease-out">
-                      <span class="text-orange-600/90 text-lg font-bold">DOKI</span>
-                      <span class="text-orange-500 text-lg font-extrabold">SHOPPE</span>
-                    </span>
-                    <div class="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-orange-500/0 via-orange-500 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  </div>
+                <div class="relative flex items-center justify-center">
+                  <iconify-icon icon="ri:store-2-line" width="30" height="30" class="text-orange-600"></iconify-icon>
+                </div>
+                <div class="relative overflow-hidden">
+                  <span class="relative inline-flex transition-transform duration-300 ease-out">
+                    <span class="text-orange-600/90 text-base font-extrabold">DOKI</span>
+                    <span class="text-orange-500 text-base font-black">SHOPPE</span>
+                  </span>
+                  <div class="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-orange-500/0 via-orange-500 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </div>
                 {:else}
-                  <span class="text-lg font-extrabold">DS</span>
+                <div class="relative flex items-center justify-center">
+                  <iconify-icon icon="ri:store-2-line" width="27" height="27" class="text-orange-600"></iconify-icon>
+                </div>
                 {/if}
               </div>
             {/if}
           </button>
 
           <!-- User Info -->
-          <div class="p-4 border-b border-gray-100">
-            <div class="flex items-center space-x-4">
-              <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                <span class="material-symbols-outlined text-xl text-orange-600">account_circle</span>
+          {#if showSidebar}
+          <div class="p-3 border-b border-gray-100">
+            <div class="flex items-center space-x-3">
+              <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-lg text-orange-600">account_circle</span>
               </div>
-              {#if showSidebar}
-                <div class="overflow-hidden">
-                  <p class="text-sm font-semibold text-gray-900 truncate">{user?.email}</p>
-                  <p class="text-xs text-gray-500 capitalize">{userType}</p>
-                </div>
-              {/if}
+              <div class="overflow-hidden">
+                <p class="text-xs font-semibold text-gray-900 truncate">{user?.email}</p>
+                <p class="text-xs text-gray-500 capitalize">{userType}</p>
+              </div>
             </div>
           </div>
+          {/if}
 
           <!-- Navigation -->
-          <nav class="flex-1 overflow-y-auto py-4">
+          <nav class="flex-1 overflow-y-auto py-2">
             {#each navItems.filter(item => userType === 'admin' || !item.adminOnly) as item}
               <a
                 href={item.path}
-                class="flex items-center px-4 py-2.5 text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-all duration-200 group relative"
+                class="flex items-center text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-all duration-200 group relative"
+                class:px-4={showSidebar}
+                class:px-2={!showSidebar}
+                class:py-2={showSidebar}
+                class:py-1.5={!showSidebar}
                 class:active={activeTab === item.path}
                 title={!showSidebar ? item.label : ''}
               >
-                <span class="material-symbols-outlined text-lg mr-3 group-hover:scale-110 transition-transform duration-200">{item.icon}</span>
+                <span class="material-symbols-outlined text-lg group-hover:scale-110 transition-transform duration-200" class:mr-3={showSidebar}>{item.icon}</span>
                 {#if showSidebar}
                   {item.label}
                 {/if}
                 {#if activeTab === item.path}
-                  <div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-orange-500 rounded-r-full"></div>
+                  <div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-orange-500 rounded-r-full"></div>
                 {/if}
               </a>
             {/each}
           </nav>
 
           <!-- Logout Button -->
-          <div class="p-4 border-t border-gray-100">
+          <div class="p-2 border-t border-gray-100">
             <button
               on:click={handleLogout}
-              class="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
+              class="w-full flex items-center justify-center text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+              class:px-4={showSidebar}
+              class:px-1={!showSidebar}
+              class:py-2={showSidebar}
+              class:py-1.5={!showSidebar}
               title={!showSidebar ? 'Logout' : ''}
             >
-              <span class="material-symbols-outlined text-lg {showSidebar ? 'mr-2' : ''}">logout</span>
+              <span class="material-symbols-outlined text-base {showSidebar ? 'mr-2' : ''}">logout</span>
               {#if showSidebar}
                 Logout
               {/if}
@@ -290,7 +299,7 @@
       <main 
         class="flex-1 h-screen overflow-y-auto overflow-x-hidden transition-all duration-300 bg-gray-50 overscroll-none"
         class:ml-72={showSidebar}
-        class:ml-20={!showSidebar}
+        class:ml-16={!showSidebar}
         style="height: calc(100vh); -webkit-overflow-scrolling: touch;"
       >
         <div class="container mx-auto p-6 max-w-full">

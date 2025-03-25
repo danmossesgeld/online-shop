@@ -89,7 +89,7 @@
         }))
         .filter(order => ['pending', 'processing'].includes(order.status));
 
-      // If admin view, fetch user details for each order
+      // Fetch user details only when in admin view (Order Management)
       if (viewType === 'admin' && isAdmin) {
         for (const order of ordersData) {
           if (order.userId) {
@@ -107,7 +107,7 @@
           }
         }
       }
-
+      
       orders = ordersData as Order[];
     } catch (error) {
       console.error('Error loading orders:', error);
@@ -194,7 +194,7 @@
           <thead class="bg-gray-50/50">
             <tr>
               <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-              {#if isAdmin}
+              {#if viewType === 'admin' && isAdmin}
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
               {/if}
               <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -208,7 +208,7 @@
             {#each orders as order}
               <tr class="hover:bg-gray-50/50 transition-colors duration-150">
                 <td class="px-4 py-3 text-sm font-medium text-gray-900">{order.id}</td>
-                {#if isAdmin}
+                {#if viewType === 'admin' && isAdmin}
                   <td class="px-4 py-3">
                     <div class="text-sm font-medium text-gray-900">{order.userDetails?.firstName} {order.userDetails?.lastName}</div>
                     <div class="text-xs text-gray-500">{order.userDetails?.email}</div>

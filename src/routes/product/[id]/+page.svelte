@@ -78,7 +78,7 @@
           ...doc.data()
         } as Product))
         .filter(item => item.id !== currentProductId)
-        .slice(0, 1); // Only get 1 item temporarily
+        .slice(0, 2); // Only get 1 item temporarily
     } catch (err) {
       console.error('Error fetching similar items:', err);
     }

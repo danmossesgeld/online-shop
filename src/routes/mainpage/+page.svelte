@@ -436,70 +436,78 @@
                 {@html currentCategory?.icon || '<iconify-icon icon="material-symbols:category" class="text-orange-500"></iconify-icon>'}
                 {selectedCategory}
               </h2>
-              <div class="overflow-x-auto pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-                <div class="flex gap-3 min-w-max">
-                  {#each getCategoryItems(selectedCategory, 2) as item}
-                    <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0">
-                      <!-- Product Image -->
-                      <div class="relative h-32 w-full overflow-hidden bg-gray-100">
-                        <button
-                          on:click={() => goto(`/product/${item.id}`)}
-                          class="w-full h-full p-0 border-none bg-transparent cursor-pointer"
-                        >
-                          <img
-                            src={item.thumbnail || 'https://via.placeholder.com/300?text=No+Image'}
-                            alt={item.itemName}
-                            class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                            decoding="async"
-                            on:error={(e: Event) => {
-                              const img = e.currentTarget as HTMLImageElement;
-                              img.src = 'https://via.placeholder.com/300?text=No+Image';
-                            }}
-                          />
-                          <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
-                        </button>
-                      </div>
-
-                      <!-- Product Info -->
-                      <div class="p-2">
-                        <h3 class="text-sm font-semibold text-gray-900 mb-1 truncate">{item.itemName}</h3>
-                        <div class="flex items-center justify-between pt-1 border-t border-gray-100">
-                          <span class="text-sm font-semibold text-orange-600">
-                            {formatPrice(item.price)}
-                          </span>
-                          <button
-                            on:click={() => goto(`/product/${item.id}`)}
-                            class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
-                          >
-                            <span class="material-symbols-outlined text-sm mr-0.5">visibility</span>
-                            View
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  {/each}
-                  {#if categoryItems.length > 2}
-                    <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0">
+              
+              <!-- Vertical grid layout for selected category -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {#each getCategoryItems(selectedCategory, expandedCategories.has(selectedCategory || '') ? undefined : 20) as item}
+                  <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 flex flex-col">
+                    <!-- Product Image -->
+                    <div class="relative h-40 w-full overflow-hidden bg-gray-100">
                       <button
-                        on:click={() => selectedCategory && toggleCategory(selectedCategory)}
-                        class="w-full h-full flex flex-col items-center justify-center p-4 text-center hover:bg-gray-50 transition-colors duration-200"
+                        on:click={() => goto(`/product/${item.id}`)}
+                        class="w-full h-full p-0 border-none bg-transparent cursor-pointer"
                       >
-                        <span class="material-symbols-outlined text-3xl text-orange-500 mb-2">
-                          {selectedCategory && expandedCategories.has(selectedCategory) ? 'chevron_left' : 'chevron_right'}
-                        </span>
-                        <span class="text-sm font-medium text-orange-600">
-                          {selectedCategory && expandedCategories.has(selectedCategory) ? 'Show Less' : 'See More'}
-                        </span>
+                        <img
+                          src={item.thumbnail || 'https://via.placeholder.com/300?text=No+Image'}
+                          alt={item.itemName}
+                          class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                          decoding="async"
+                          on:error={(e: Event) => {
+                            const img = e.currentTarget as HTMLImageElement;
+                            img.src = 'https://via.placeholder.com/300?text=No+Image';
+                          }}
+                        />
+                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
                       </button>
                     </div>
-                  {/if}
-                </div>
+
+                    <!-- Product Info -->
+                    <div class="p-3 flex-grow flex flex-col">
+                      <h3 class="text-sm font-semibold text-gray-900 mb-1 truncate">{item.itemName}</h3>
+                      <div class="flex items-center justify-between pt-1 mt-auto border-t border-gray-100">
+                        <span class="text-sm font-semibold text-orange-600">
+                          {formatPrice(item.price)}
+                        </span>
+                        <button
+                          on:click={() => goto(`/product/${item.id}`)}
+                          class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+                        >
+                          <span class="material-symbols-outlined text-sm mr-0.5">visibility</span>
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                {/each}
               </div>
+              
+              <!-- Show more button at the end of the grid -->
+              {#if categoryItems.length > 20 && !expandedCategories.has(selectedCategory || '')}
+                <div class="flex justify-center mt-6">
+                  <button
+                    on:click={() => toggleCategory(selectedCategory || '')}
+                    class="inline-flex items-center px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-orange-50 hover:border-orange-200 transition-all duration-200"
+                  >
+                    <span class="material-symbols-outlined text-orange-500 mr-2">expand_more</span>
+                    <span class="text-sm font-medium text-orange-600">Show More Items</span>
+                  </button>
+                </div>
+              {:else if expandedCategories.has(selectedCategory || '') && categoryItems.length > 20}
+                <div class="flex justify-center mt-6">
+                  <button
+                    on:click={() => toggleCategory(selectedCategory || '')}
+                    class="inline-flex items-center px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-orange-50 hover:border-orange-200 transition-all duration-200"
+                  >
+                    <span class="material-symbols-outlined text-orange-500 mr-2">expand_less</span>
+                    <span class="text-sm font-medium text-orange-600">Show Less</span>
+                  </button>
+                </div>
+              {/if}
             </div>
           {/if}
         {:else}
-          <!-- If no category is selected, group products under each category -->
+          <!-- If no category is selected, group products under each category with horizontal scrolling -->
           {#each categories as category}
             {#if getCategoryItemsByName(category.name).length > 0}
               <div class="mb-8">
@@ -507,6 +515,8 @@
                   {@html category.icon}
                   {category.name}
                 </h2>
+                
+                <!-- Horizontal scroll layout for default view -->
                 <div class="overflow-x-auto pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
                   <div class="flex gap-3 min-w-max">
                     {#each getCategoryItemsByName(category.name, expandedCategories.has(category.name) ? undefined : 2) as item}

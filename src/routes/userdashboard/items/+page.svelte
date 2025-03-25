@@ -48,11 +48,6 @@
       `
     },
     {
-      key: 'category',
-      label: 'Category',
-      sortable: true
-    },
-    {
       key: 'price',
       label: 'Price',
       sortable: true,
