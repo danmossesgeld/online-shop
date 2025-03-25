@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getFirestore, doc, getDoc } from 'firebase/firestore';
+  import { getFirestore, doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
   import { cart, addToCart, cartCount } from '$lib/store/cart';
   import { auth } from '$lib/firebase';
   import { signOut, type User } from 'firebase/auth';
@@ -10,6 +10,7 @@
   import { fade, slide } from 'svelte/transition';
   import { writable } from 'svelte/store';
   import { notifications } from '$lib/components/Notification.svelte';
+  import { goto } from '$app/navigation';
 
   interface VariationOption {
     value: string;
@@ -38,6 +39,7 @@
     productVariations: ProductVariation[];
     specs?: string[];
     detailedInfo?: string;
+    category: string;
   }
 
   let loading = true;
@@ -50,6 +52,8 @@
   let showModal = false;
   let showToast = false;
   let toastMessage = '';
+  let showDetailedInfo = false;
+  let similarItems: Product[] = [];
 
   const db = getFirestore();
   const errorMessage = writable('');
@@ -59,14 +63,31 @@
     user = newUser;
   });
 
-  onMount(async () => {
+  // Function to fetch similar items
+  const fetchSimilarItems = async (category: string, currentProductId: string) => {
     try {
-      const productId = $page.params.id;
-      if (!productId) {
-        error = 'Product ID is required';
-        return;
-      }
+      const itemsRef = collection(db, 'items');
+      // Get the main category from the full category path
+      const mainCategory = category.split(' > ')[0];
+      const q = query(itemsRef, where('category', '>=', mainCategory), where('category', '<=', mainCategory + '\uf8ff'));
+      const querySnapshot = await getDocs(q);
+      
+      similarItems = querySnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Product))
+        .filter(item => item.id !== currentProductId)
+        .slice(0, 1); // Only get 1 item temporarily
+    } catch (err) {
+      console.error('Error fetching similar items:', err);
+    }
+  };
 
+  // Function to fetch product data
+  const fetchProductData = async (productId: string) => {
+    try {
+      loading = true;
       const docRef = doc(db, 'items', productId);
       const docSnap = await getDoc(docRef);
 
@@ -82,7 +103,8 @@
           variations: data.variations || {},
           productVariations: Array.isArray(data.productVariations) ? data.productVariations : [],
           specs: Array.isArray(data.specs) ? data.specs : [],
-          detailedInfo: data.detailedInfo
+          detailedInfo: data.detailedInfo,
+          category: data.category || ''
         };
 
         selectedImage = product.thumbnail;
@@ -92,6 +114,11 @@
           Object.keys(product.variations).forEach(variationType => {
             selectedVariations[variationType] = '';
           });
+        }
+
+        // Fetch similar items after getting the product
+        if (product.category) {
+          await fetchSimilarItems(product.category, productId);
         }
       } else {
         error = 'Product not found';
@@ -103,6 +130,21 @@
       notifications.add('Error loading product details', 'error');
     } finally {
       loading = false;
+    }
+  };
+
+  // Watch for route changes
+  $: {
+    const productId = $page.params.id;
+    if (productId) {
+      fetchProductData(productId);
+    }
+  }
+
+  onMount(() => {
+    const productId = $page.params.id;
+    if (productId) {
+      fetchProductData(productId);
     }
   });
 
@@ -204,11 +246,11 @@
 {:else if product}
   <div class="min-h-screen bg-gray-50">
     <Navbar />
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-20">
       <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 sm:p-6">
           <!-- Product Images -->
-          <div class="space-y-4">
+          <div class="space-y-3">
             <div class="aspect-square bg-white rounded-lg overflow-hidden border border-gray-100">
               <button
                 type="button"
@@ -224,7 +266,7 @@
             </div>
             
             {#if product?.images && product.images.length > 0}
-              <div class="grid grid-cols-4 gap-2">
+              <div class="grid grid-cols-4 gap-1.5">
                 {#if product?.thumbnail}
                   <button
                     class="aspect-square bg-white rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-orange-500 border border-gray-100"
@@ -258,20 +300,20 @@
           </div>
 
           <!-- Product Info -->
-          <div class="space-y-6">
+          <div class="space-y-4">
             <div>
-              <h1 class="text-2xl font-bold text-gray-900">{product.itemName}</h1>
-              <span class="block text-2xl font-bold text-orange-600 mt-2">
+              <h1 class="text-xl font-bold text-gray-900">{product.itemName}</h1>
+              <span class="block text-xl font-bold text-orange-600 mt-1">
                 {formatPrice(selectedProductVariation?.price || product.price)}
               </span>
-              <p class="mt-4 text-gray-500">{product.description}</p>
+              <p class="mt-3 text-sm text-gray-500">{product.description}</p>
             </div>
 
             <!-- Specifications -->
             {#if product.specs && product.specs.length > 0}
               <div>
-                <h3 class="text-sm font-medium text-gray-900 mb-2">Specifications</h3>
-                <ul class="list-disc pl-5 text-sm text-gray-500 space-y-1">
+                <h3 class="text-sm font-medium text-gray-900 mb-1.5">Specifications</h3>
+                <ul class="list-disc pl-4 text-sm text-gray-500 space-y-0.5">
                   {#each product.specs as spec}
                     <li>{spec}</li>
                   {/each}
@@ -281,19 +323,19 @@
 
             <!-- Variations -->
             {#if product.variations}
-              <div class="space-y-4">
+              <div class="space-y-3">
                 {#each Object.entries(product.variations) as [variationType, options]}
                   <div>
                     <label 
                       for={variationType} 
-                      class="block text-sm font-medium text-gray-700 mb-1"
+                      class="block text-sm font-medium text-gray-700 mb-0.5"
                     >
                       {variationType}
                     </label>
                     <select
                       id={variationType}
                       bind:value={selectedVariations[variationType]}
-                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-200"
+                      class="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-200"
                     >
                       <option value="">Select {variationType}</option>
                       {#each options as option}
@@ -308,10 +350,10 @@
             <!-- Add to Cart Button -->
             <button
               on:click={handleAddToCart}
-              class="w-full inline-flex items-center justify-center px-8 py-4 text-lg font-medium rounded-lg shadow-sm text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              class="w-full inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-lg shadow-sm text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
               disabled={!product?.variations || Object.keys(product.variations).some(type => !selectedVariations[type])}
             >
-              <span class="material-symbols-outlined text-2xl mr-2">shopping_cart</span>
+              <span class="material-symbols-outlined text-xl mr-2">shopping_cart</span>
               Add to Cart
             </button>
           </div>
@@ -319,13 +361,82 @@
 
         <!-- Product Details Section -->
         <div class="border-t border-gray-200">
-          <div class="p-6">
+          <div class="p-4 sm:p-6">
             <!-- Detailed Info -->
             {#if product.detailedInfo}
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Product Details</h3>
-                <div class="whitespace-pre-line text-sm text-gray-500">
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-base font-semibold text-gray-900">Product Details</h3>
+                  <button
+                    on:click={() => showDetailedInfo = !showDetailedInfo}
+                    class="text-sm text-orange-500 hover:text-orange-600 flex items-center gap-1"
+                  >
+                    <span class="material-symbols-outlined text-base">
+                      {showDetailedInfo ? 'expand_less' : 'expand_more'}
+                    </span>
+                    {showDetailedInfo ? 'Show Less' : 'Show More'}
+                  </button>
+                </div>
+                <div 
+                  class="whitespace-pre-line text-sm text-gray-500 transition-all duration-300"
+                  class:line-clamp-3={!showDetailedInfo}
+                >
                   {product.detailedInfo}
+                </div>
+              </div>
+            {/if}
+
+            <!-- Similar Items -->
+            {#if similarItems.length > 0}
+              <div class="mt-6">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-base font-semibold text-gray-900">Similar Items</h3>
+                  <span class="text-xs text-gray-500">in {product.category.split(' > ')[0]}</span>
+                </div>
+                <div class="overflow-x-auto pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+                  <div class="flex gap-3 min-w-max">
+                    {#each similarItems as item}
+                      <a 
+                        href="/product/{item.id}"
+                        class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0"
+                      >
+                        <div class="relative h-32 w-full overflow-hidden bg-gray-100">
+                          <img
+                            src={item.thumbnail}
+                            alt={item.itemName}
+                            class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
+                        </div>
+                        <div class="p-2">
+                          <h4 class="text-sm font-medium text-gray-900 mb-1 truncate">{item.itemName}</h4>
+                          <div class="flex items-center justify-between pt-1 border-t border-gray-100">
+                            <span class="text-sm font-semibold text-orange-600">
+                              {formatPrice(item.price)}
+                            </span>
+                            <span class="material-symbols-outlined text-sm text-orange-500">visibility</span>
+                          </div>
+                        </div>
+                      </a>
+                    {/each}
+                    <!-- Show More Button -->
+                    <a 
+                      href="/mainpage"
+                      on:click|preventDefault={() => {
+                        if (product) {
+                          const mainCategory = product.category.split(' > ')[0];
+                          goto(`/mainpage?category=${encodeURIComponent(mainCategory)}`, { replaceState: true });
+                        }
+                      }}
+                      class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0 flex items-center justify-center"
+                    >
+                      <div class="p-4 text-center">
+                        <span class="material-symbols-outlined text-3xl text-orange-500 mb-2">arrow_forward</span>
+                        <p class="text-sm font-medium text-gray-900">Show More</p>
+                        <p class="text-xs text-gray-500 mt-1">View all {product?.category.split(' > ')[0]} items</p>
+                      </div>
+                    </a>
+                  </div>
                 </div>
               </div>
             {/if}

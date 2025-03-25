@@ -4,7 +4,13 @@
   import { notifications } from '$lib/components/Notification.svelte';
 
   const db = getFirestore();
-  let categories: Record<string, Record<string, string[]>> = {};
+  type CategoryGroups = Record<string, string[]>;
+  interface CategoryData {
+    icon?: string;
+    [key: string]: string[] | string | undefined;
+  }
+  
+  let categories: Record<string, CategoryGroups> = {};
   let loading = true;
   let newMainCategory = '';
   let newGroup = '';
@@ -12,6 +18,8 @@
   let selectedMainCategory = '';
   let selectedGroup = '';
   let categoryIcons: Record<string, string> = {};
+
+  const DEFAULT_ICON = '<iconify-icon icon="mdi:category"></iconify-icon>';
 
   onMount(async () => {
     await loadCategories();
@@ -21,8 +29,20 @@
     try {
       const querySnapshot = await getDocs(collection(db, 'itemcategory'));
       categories = {};
+      categoryIcons = {};
       querySnapshot.forEach((doc) => {
-        categories[doc.id] = doc.data();
+        const data = doc.data();
+        const groups: CategoryGroups = {};
+        
+        // Separate arrays (groups) from other fields
+        Object.entries(data).forEach(([key, value]) => {
+          if (key !== 'icon' && Array.isArray(value)) {
+            groups[key] = value;
+          }
+        });
+        
+        categories[doc.id] = groups;
+        categoryIcons[doc.id] = data.icon || DEFAULT_ICON;
       });
       loading = false;
     } catch (err) {
@@ -39,12 +59,13 @@
     }
 
     try {
-      await setDoc(doc(db, 'itemcategory', newMainCategory.trim()), {
-        icon: categoryIcons[newMainCategory.trim()] || 'category'
-      });
+      const docRef = doc(db, 'itemcategory', newMainCategory.trim());
+      const newData: CategoryData = {
+        icon: DEFAULT_ICON
+      };
+      await setDoc(docRef, newData);
       await loadCategories();
       newMainCategory = '';
-      categoryIcons[newMainCategory.trim()] = '';
       notifications.add('Category added successfully');
     } catch (err) {
       console.error('Error adding category:', err);
@@ -63,11 +84,19 @@
       const categoryDoc = await getDoc(categoryRef);
       const currentData = categoryDoc.data() || {};
       
-      await setDoc(categoryRef, {
-        ...currentData,
+      const newData: CategoryData = {
+        icon: currentData.icon || DEFAULT_ICON,
         [newGroup.trim()]: []
+      };
+
+      // Add existing groups
+      Object.entries(currentData).forEach(([key, value]) => {
+        if (key !== 'icon' && Array.isArray(value)) {
+          newData[key] = value;
+        }
       });
       
+      await setDoc(categoryRef, newData);
       await loadCategories();
       newGroup = '';
       notifications.add('Group added successfully');
@@ -87,13 +116,23 @@
       const categoryRef = doc(db, 'itemcategory', selectedMainCategory);
       const categoryDoc = await getDoc(categoryRef);
       const currentData = categoryDoc.data() || {};
-      const currentSubcategories = currentData[selectedGroup] || [];
       
-      await setDoc(categoryRef, {
-        ...currentData,
-        [selectedGroup]: [...currentSubcategories, newSubcategory.trim()]
+      const newData: CategoryData = {
+        icon: currentData.icon || DEFAULT_ICON
+      };
+
+      // Add all existing groups
+      Object.entries(currentData).forEach(([key, value]) => {
+        if (key !== 'icon' && Array.isArray(value)) {
+          if (key === selectedGroup) {
+            newData[key] = [...value, newSubcategory.trim()];
+          } else {
+            newData[key] = value;
+          }
+        }
       });
       
+      await setDoc(categoryRef, newData);
       await loadCategories();
       newSubcategory = '';
       notifications.add('Subcategory added successfully');
@@ -127,9 +166,19 @@
       const categoryRef = doc(db, 'itemcategory', category);
       const categoryDoc = await getDoc(categoryRef);
       const currentData = categoryDoc.data() || {};
-      const { [group]: _, ...rest } = currentData;
       
-      await setDoc(categoryRef, rest);
+      const newData: CategoryData = {
+        icon: currentData.icon || DEFAULT_ICON
+      };
+
+      // Add all groups except the one being deleted
+      Object.entries(currentData).forEach(([key, value]) => {
+        if (key !== 'icon' && key !== group && Array.isArray(value)) {
+          newData[key] = value;
+        }
+      });
+      
+      await setDoc(categoryRef, newData);
       await loadCategories();
       notifications.add('Group deleted successfully');
     } catch (err) {
@@ -147,13 +196,23 @@
       const categoryRef = doc(db, 'itemcategory', category);
       const categoryDoc = await getDoc(categoryRef);
       const currentData = categoryDoc.data() || {};
-      const currentSubcategories = currentData[group] || [];
       
-      await setDoc(categoryRef, {
-        ...currentData,
-        [group]: currentSubcategories.filter((sub: string) => sub !== subcategory)
+      const newData: CategoryData = {
+        icon: currentData.icon || DEFAULT_ICON
+      };
+
+      // Add all groups, filtering out the subcategory from the specified group
+      Object.entries(currentData).forEach(([key, value]) => {
+        if (key !== 'icon' && Array.isArray(value)) {
+          if (key === group) {
+            newData[key] = value.filter(sub => sub !== subcategory);
+          } else {
+            newData[key] = value;
+          }
+        }
       });
       
+      await setDoc(categoryRef, newData);
       await loadCategories();
       notifications.add('Subcategory deleted successfully');
     } catch (err) {
@@ -162,8 +221,35 @@
     }
   }
 
-  function updateCategoryIcon(category: string, icon: string) {
-    categoryIcons[category] = icon;
+  async function updateCategoryIcon(category: string, iconTag: string) {
+    if (!iconTag.trim()) {
+      notifications.add('Please enter an icon tag', 'error');
+      return;
+    }
+
+    try {
+      const categoryRef = doc(db, 'itemcategory', category);
+      const categoryDoc = await getDoc(categoryRef);
+      const currentData = categoryDoc.data() || {};
+      
+      const newData: CategoryData = {
+        icon: iconTag.trim()
+      };
+
+      // Preserve all existing groups
+      Object.entries(currentData).forEach(([key, value]) => {
+        if (key !== 'icon' && Array.isArray(value)) {
+          newData[key] = value;
+        }
+      });
+      
+      await setDoc(categoryRef, newData);
+      categoryIcons[category] = iconTag.trim();
+      notifications.add('Icon updated successfully');
+    } catch (err) {
+      console.error('Error updating icon:', err);
+      notifications.add('Error updating icon', 'error');
+    }
   }
 </script>
 
@@ -177,14 +263,6 @@
           type="text"
           bind:value={newMainCategory}
           placeholder="Enter category name"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-        />
-      </div>
-      <div class="flex-1">
-        <input
-          type="text"
-          bind:value={categoryIcons[newMainCategory.trim()]}
-          placeholder="Enter icon name (e.g., 'category')"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
         />
       </div>
@@ -287,18 +365,10 @@
           <div class="border-b border-gray-200 pb-4 last:border-b-0">
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-orange-500">
-                  {categoryIcons[category] || 'category'}
-                </span>
+                {@html categoryIcons[category]}
                 <h4 class="text-lg font-medium text-gray-900">{category}</h4>
               </div>
               <div class="flex items-center gap-2">
-                <input
-                  type="text"
-                  bind:value={categoryIcons[category]}
-                  placeholder="Icon name"
-                  class="px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
                 <button
                   on:click={() => deleteMainCategory(category)}
                   class="p-1 text-red-500 hover:text-red-600 focus:outline-none"
