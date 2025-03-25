@@ -31,6 +31,9 @@ interface OrderData {
   userEmail: string | null;
 }
 
+// Add this after the OrderData interface
+const PENDING_ORDER_KEY = 'pending_order_data';
+
 function createCart() {
   const { subscribe, set, update } = writable<CartItem[]>([]);
   const db = getFirestore();
@@ -225,7 +228,33 @@ export const clearCart = (): void => {
   cart.clear();
 };
 
-// Checkout function with better error handling and type safety
+// Add this function before the checkout function
+export const setPendingOrderData = (items: CartItem[]): void => {
+  if (browser) {
+    localStorage.setItem(PENDING_ORDER_KEY, JSON.stringify(items));
+  }
+};
+
+export const getPendingOrderData = (): CartItem[] | null => {
+  if (!browser) return null;
+  
+  try {
+    const storedData = localStorage.getItem(PENDING_ORDER_KEY);
+    if (!storedData) return null;
+    return JSON.parse(storedData);
+  } catch (error) {
+    console.error('Error reading pending order data:', error);
+    return null;
+  }
+};
+
+export const clearPendingOrderData = (): void => {
+  if (browser) {
+    localStorage.removeItem(PENDING_ORDER_KEY);
+  }
+};
+
+// Modify the checkout function
 export const checkout = async (): Promise<string> => {
   const user = auth.currentUser;
   if (!user) {
@@ -233,7 +262,8 @@ export const checkout = async (): Promise<string> => {
     throw new Error('User must be logged in to checkout');
   }
 
-  const cartData = get(cart);
+  // Use pending order data if available, otherwise use current cart
+  const cartData = getPendingOrderData() || get(cart);
   if (cartData.length === 0) {
     notifications.add('Cart is empty', 'error');
     throw new Error('Cart is empty');
@@ -254,20 +284,33 @@ export const checkout = async (): Promise<string> => {
     const orderData: OrderData = {
       userId: user.uid,
       items: cleanCartData,
-      totalPrice: get(cartTotal),
+      totalPrice: cartData.reduce((sum, item) => {
+        const price = item.variationPrice || item.price;
+        return sum + price * item.quantity;
+      }, 0),
       status: 'pending',
       timestamp: new Date(),
       userEmail: user.email || null
     };
 
+    // Save order to Firestore
     const orderRef = await addDoc(collection(getFirestore(), 'orders'), {
       ...orderData,
       timestamp: serverTimestamp()
     });
 
-    // Clear cart after successful checkout
-    cart.clear();
-    notifications.add('Order placed successfully!', 'success');
+    if (!orderRef.id) {
+      throw new Error('Failed to create order document');
+    }
+
+    // Verify the order was saved by fetching it back
+    const savedOrder = await getDoc(orderRef);
+    if (!savedOrder.exists()) {
+      throw new Error('Order was not properly saved');
+    }
+
+    // Clear pending order data after successful order creation
+    clearPendingOrderData();
     return orderRef.id;
   } catch (error) {
     console.error('Error during checkout:', error);
