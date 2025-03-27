@@ -1,74 +1,79 @@
-<script lang="ts" context="module">
-    import type { Writable } from 'svelte/store';
-    import { writable } from 'svelte/store';
-
-    interface Item {
-        id: string;
-        itemName: string;
-        price: number;
-        thumbnail: string;
-        category: string;
-    }
-
-    export const itemsStore: Writable<Item[]> = writable([]);
-    export const loadingStore: Writable<boolean> = writable(true);
-    export const errorStore: Writable<string | null> = writable(null);
-</script>
-
 <script lang="ts">
-    import { getFirestore, collection, getDocs } from 'firebase/firestore';
     import { onMount } from 'svelte';
     import { notifications } from '$lib/components/Notification.svelte';
     import { auth } from '$lib/firebase';
     import { goto } from '$app/navigation';
+    import { authStore as globalAuthStore } from '$lib/store/auth';
+    import { isAuthenticated } from '$lib/auth';
+    import { 
+        itemsStore, 
+        errorStore, 
+        fetchItems, 
+        fetchCategories,
+        startItemsListener, 
+        stopItemsListener,
+        startCategoriesListener,
+        stopCategoriesListener 
+    } from '$lib/store/items';
 
     let mounted = false;
+    let unsubscribeAuth: () => void;
+    let authChecked = false;
+
+    // Subscribe to global auth store to immediately update our local state
+    $: {
+        const isAuth = $globalAuthStore.isAuthenticated;
+        if (!authChecked && !$globalAuthStore.isLoading) {
+            authChecked = true;
+            
+            if (!isAuth) {
+                goto('/login');
+            } else if (mounted) {
+                // Only load items and categories if we're authenticated and mounted
+                fetchItems();
+                fetchCategories();
+                startItemsListener();
+                startCategoriesListener();
+            }
+        }
+    }
 
     onMount(() => {
         mounted = true;
-        const db = getFirestore();
-
-        // Reset stores
-        itemsStore.set([]);
-        loadingStore.set(true);
-        errorStore.set(null);
-
-        // Set up auth listener
-        const unsubscribe = auth.onAuthStateChanged(async (user) => {
-            if (!user) {
-                // If not authenticated, redirect to login
+        
+        // If auth state is already established, use it immediately
+        if (!$globalAuthStore.isLoading) {
+            authChecked = true;
+            
+            if (!$globalAuthStore.isAuthenticated) {
                 goto('/login');
-                return;
+            } else {
+                fetchItems();
+                fetchCategories();
+                startItemsListener();
+                startCategoriesListener();
             }
-
-            try {
-                const itemsSnapshot = await getDocs(collection(db, 'items'));
-                const items = itemsSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                })) as Item[];
-
-                if (mounted) {
-                    itemsStore.set(items);
-                    loadingStore.set(false);
+        } else {
+            // Fallback to traditional auth checking if needed
+            unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
+                if (!user) {
+                    goto('/login');
+                    return;
                 }
-            } catch (error) {
-                console.error('Error loading items:', error);
-                if (mounted) {
-                    const errorMessage = 'Failed to load items. Please try again later.';
-                    errorStore.set(errorMessage);
-                    notifications.add(errorMessage, 'error');
-                    loadingStore.set(false);
-                }
-            }
-        });
+
+                await Promise.all([fetchItems(), fetchCategories()]);
+                startItemsListener();
+                startCategoriesListener();
+            });
+        }
 
         return () => {
             mounted = false;
-            unsubscribe();
-            itemsStore.set([]);
-            loadingStore.set(true);
-            errorStore.set(null);
+            if (unsubscribeAuth) {
+                unsubscribeAuth();
+            }
+            stopItemsListener();
+            stopCategoriesListener();
         };
     });
 </script>

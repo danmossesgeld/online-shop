@@ -3,63 +3,88 @@
   import { writable } from 'svelte/store';
   import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
   import { db } from '$lib/firebase';
-  import { collection, getDocs } from 'firebase/firestore';
+  import { collection, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
   import { notifications } from '$lib/components/Notification.svelte';
+  import { updateCartProductDetails } from '$lib/store/cart';
 
   const dispatch = createEventDispatcher();
 
-  // Props
+  // Define strict types
+  interface ItemFormData {
+    itemName: string;
+    price: number;
+    stock: number;
+    category: string;
+    thumbnail: string;
+    images: string[];
+    variations: Record<string, string[]>;
+    specs: string[];
+    detailedInfo: string;
+  }
+
+  interface CategoryData {
+    [key: string]: Record<string, string[]>;
+  }
+
+  // Props with strict types
   export let mode: 'create' | 'edit' = 'create';
   export let itemId: string | null = null;
-  export let initialData: {
-    itemName?: string;
-    price?: number;
-    stock?: number;
-    category?: string;
-    thumbnail?: string;
-    images?: string[];
-    variations?: Record<string, string[]>;
-    specs?: string[];
-    detailedInfo?: string;
-  } = {};
+  export let initialData: Partial<ItemFormData> = {};
 
-  // Form state
-  let itemName = initialData.itemName || '';
-  let price = initialData.price || 0;
-  let stock = initialData.stock || 0;
-  let category = initialData.category || '';
-  let detailedInfo = initialData.detailedInfo || '';
+  // Form state with strict types
+  let formState: ItemFormData = {
+    itemName: initialData.itemName || '',
+    price: initialData.price || 0,
+    stock: initialData.stock || 0,
+    category: initialData.category || '',
+    thumbnail: initialData.thumbnail || '',
+    images: initialData.images || [],
+    variations: initialData.variations || {},
+    specs: initialData.specs || [],
+    detailedInfo: initialData.detailedInfo || ''
+  };
 
   // Category selection state
-  let categoryData: Record<string, Record<string, string[]>> = {};
+  let categoryData: CategoryData = {};
   let selectedMainCategory = '';
   let selectedSubCategory = '';
   let selectedThirdCategory = '';
   let subCategories: string[] = [];
   let thirdCategories: string[] = [];
 
-  // If initialData has category, split it to set initial selections
+  // File state
+  let thumbnail: File | null = null;
+  let images: File[] = [];
+
+  // UI state
+  const error = writable('');
+  const successMessage = writable('');
+  let isSubmitting = false;
+  const storage = getStorage();
+
+  // Watch for initialData changes only once on mount
   onMount(async () => {
+    await loadCategories();
+    
+    // Set up category selection if initial data exists
     if (initialData.category) {
       const [main, sub, third] = initialData.category.split(' > ').map(c => c.trim());
       selectedMainCategory = main || '';
       selectedSubCategory = sub || '';
       selectedThirdCategory = third || '';
+      handleMainCategoryChange();
     }
-    await loadCategories();
   });
 
   // Load categories from Firestore
   async function loadCategories() {
     try {
       const querySnapshot = await getDocs(collection(db, 'itemcategory'));
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        // Store the document data directly, as it contains array fields
-        categoryData[doc.id] = data;
-      });
+      categoryData = querySnapshot.docs.reduce((acc, doc) => ({
+        ...acc,
+        [doc.id]: doc.data()
+      }), {});
       
-      // If we have initial category, set the dropdowns
       if (selectedMainCategory) {
         handleMainCategoryChange();
       }
@@ -68,10 +93,9 @@
     }
   }
 
-  // Handle category changes
+  // Category handlers
   function handleMainCategoryChange() {
     if (selectedMainCategory && categoryData[selectedMainCategory]) {
-      // Get array field names as subcategories, excluding any non-array fields
       subCategories = Object.entries(categoryData[selectedMainCategory])
         .filter(([_, value]) => Array.isArray(value))
         .map(([key]) => key);
@@ -93,7 +117,6 @@
 
   function handleSubCategoryChange() {
     if (selectedMainCategory && selectedSubCategory && categoryData[selectedMainCategory]) {
-      // Get the array values for the selected subcategory
       const arrayField = categoryData[selectedMainCategory][selectedSubCategory];
       thirdCategories = Array.isArray(arrayField) ? arrayField : [];
       
@@ -108,36 +131,18 @@
   }
 
   function updateCategoryString() {
-    const parts = [
-      selectedMainCategory,
-      selectedSubCategory,
-      selectedThirdCategory
-    ].filter(Boolean);
-    category = parts.join(' > ');
+    formState.category = [selectedMainCategory, selectedSubCategory, selectedThirdCategory]
+      .filter(Boolean)
+      .join(' > ');
   }
 
-  // Rest of the existing state
-  let thumbnail: File | null = null;
-  let images: File[] = [];
-  let currentThumbnailUrl = initialData.thumbnail || '';
-  let currentImageUrls = initialData.images || [];
-  let variations: Record<string, string[]> = initialData.variations || {};
-  let specs: string[] = initialData.specs || [];
-
-  const error = writable('');
-  const successMessage = writable('');
-  const storage = getStorage();
-
-  // Add loading state
-  let isSubmitting = false;
-
+  // File handlers
   const handleRemoveThumbnail = async () => {
     try {
-      if (currentThumbnailUrl) {
-        // Get the storage reference from the URL
-        const imageRef = ref(storage, currentThumbnailUrl);
+      if (formState.thumbnail) {
+        const imageRef = ref(storage, formState.thumbnail);
         await deleteObject(imageRef);
-        currentThumbnailUrl = '';
+        formState.thumbnail = '';
       }
     } catch (err) {
       console.error('Error deleting thumbnail:', err);
@@ -147,12 +152,11 @@
 
   const handleRemoveImage = async (index: number) => {
     try {
-      const imageUrl = currentImageUrls[index];
+      const imageUrl = formState.images[index];
       if (imageUrl) {
-        // Get the storage reference from the URL
         const imageRef = ref(storage, imageUrl);
         await deleteObject(imageRef);
-        currentImageUrls = currentImageUrls.filter((_, i) => i !== index);
+        formState.images = formState.images.filter((_, i) => i !== index);
       }
     } catch (err) {
       console.error('Error deleting image:', err);
@@ -162,7 +166,7 @@
 
   const handleFileChange = (e: Event) => {
     const target = e.target as HTMLInputElement;
-    if (target && target.files) {
+    if (target?.files) {
       if (target.id === 'thumbnail') {
         thumbnail = target.files[0];
       } else if (target.id === 'images') {
@@ -173,128 +177,127 @@
 
   // Variations handlers
   const addVariation = () => {
-    const newKey = `Variation ${Object.keys(variations).length + 1}`;
-    variations = { ...variations, [newKey]: [] };
+    const newKey = `Variation ${Object.keys(formState.variations).length + 1}`;
+    formState.variations = { ...formState.variations, [newKey]: [] };
   };
 
   const handleRemoveVariation = (category: string) => {
-    const newVariations = { ...variations };
-    delete newVariations[category];
-    variations = newVariations;
+    const { [category]: _, ...rest } = formState.variations;
+    formState.variations = rest;
   };
 
   const handleVariationCategoryChange = (oldKey: string, newKey: string) => {
-    if (newKey.trim() !== '' && newKey !== oldKey) {
-      const values = variations[oldKey] || [];
-      const newVariations = { ...variations };
-      delete newVariations[oldKey];
-      newVariations[newKey] = values;
-      variations = newVariations;
+    if (newKey.trim() && newKey !== oldKey) {
+      const values = formState.variations[oldKey] || [];
+      const { [oldKey]: _, ...rest } = formState.variations;
+      formState.variations = { ...rest, [newKey]: values };
     }
   };
 
   const handleVariationValueChange = (category: string, index: number, newValue: string) => {
-    const newVariations = { ...variations };
-    if (!newVariations[category]) {
-      newVariations[category] = [];
-    }
-    newVariations[category] = [...newVariations[category]];
-    newVariations[category][index] = newValue;
-    variations = newVariations;
+    formState.variations = {
+      ...formState.variations,
+      [category]: formState.variations[category].map((value, i) => 
+        i === index ? newValue : value
+      )
+    };
   };
 
   const handleAddVariationValue = (category: string) => {
-    const newVariations = { ...variations };
-    if (!newVariations[category]) {
-      newVariations[category] = [];
-    }
-    newVariations[category] = [...newVariations[category], ''];
-    variations = newVariations;
+    formState.variations = {
+      ...formState.variations,
+      [category]: [...(formState.variations[category] || []), '']
+    };
   };
 
   const handleVariationRemove = (category: string, index: number) => {
-    const newVariations = { ...variations };
-    if (newVariations[category]) {
-      newVariations[category] = [...newVariations[category]];
-      newVariations[category].splice(index, 1);
-      variations = newVariations;
-    }
+    formState.variations = {
+      ...formState.variations,
+      [category]: formState.variations[category].filter((_, i) => i !== index)
+    };
   };
 
   // Specifications handlers
   const addSpec = () => {
-    specs = [...specs, ''];
+    formState.specs = [...formState.specs, ''];
   };
 
   const handleSpecChange = (index: number, newValue: string) => {
-    specs[index] = newValue;
-    specs = [...specs];
+    formState.specs = formState.specs.map((spec, i) => 
+      i === index ? newValue : spec
+    );
   };
 
   const removeSpec = (index: number) => {
-    specs.splice(index, 1);
-    specs = [...specs];
+    formState.specs = formState.specs.filter((_, i) => i !== index);
   };
 
   const handleSubmit = async () => {
     // Validate variations
-    for (const key in variations) {
-      if (variations[key].length === 0) {
+    for (const key in formState.variations) {
+      if (formState.variations[key].length === 0) {
         notifications.add(`Please add values for the "${key}" variation.`, 'error');
         return;
       }
     }
 
-    if (!itemName || !price || !stock || !category || (!thumbnail && !currentThumbnailUrl) || (images.length === 0 && currentImageUrls.length === 0)) {
+    if (!formState.itemName || !formState.price || !formState.stock || !formState.category || (!thumbnail && !formState.thumbnail) || (images.length === 0 && formState.images.length === 0)) {
       notifications.add('Please fill in all required fields and upload images.', 'error');
       return;
     }
 
     try {
       isSubmitting = true;
-      let thumbnailURL = currentThumbnailUrl;
-      let imageURLs = [...currentImageUrls];
+      let thumbnailURL = formState.thumbnail;
+      let imageURLs = [...formState.images];
 
       // Upload new thumbnail if provided
       if (thumbnail) {
-        const timestamp = Date.now();
-        const thumbnailFilename = `${itemId || 'new'}_${timestamp}_thumbnail${thumbnail.name.substring(thumbnail.name.lastIndexOf('.'))}`;
-        const thumbnailRef = ref(storage, `thumbnails/${thumbnailFilename}`);
+        const thumbnailRef = ref(storage, `products/${itemId || Date.now()}/thumbnail`);
         await uploadBytes(thumbnailRef, thumbnail);
         thumbnailURL = await getDownloadURL(thumbnailRef);
       }
 
-      // Upload new images if provided - optimized with parallel processing
+      // Upload new images if provided
       if (images.length > 0) {
-        const uploadPromises = images.map(async (image, index) => {
-          const timestamp = Date.now() + index;
-          const imageFilename = `${itemId || 'new'}_${timestamp}_image_${index}${image.name.substring(image.name.lastIndexOf('.'))}`;
-          const imageRef = ref(storage, `items/${imageFilename}`);
+        const uploadPromises = images.map(async (image) => {
+          const imageRef = ref(storage, `products/${itemId || Date.now()}/images/${Date.now()}`);
           await uploadBytes(imageRef, image);
           return getDownloadURL(imageRef);
         });
-
         imageURLs = await Promise.all(uploadPromises);
       }
 
       // Prepare item data
       const itemData = {
-        itemName,
-        price,
-        stock,
-        category,
+        itemName: formState.itemName,
+        price: formState.price,
+        stock: formState.stock,
+        category: formState.category,
         thumbnail: thumbnailURL,
         images: imageURLs,
-        variations,
-        specs,
-        detailedInfo,
+        variations: formState.variations,
+        specs: formState.specs,
+        detailedInfo: formState.detailedInfo,
         ...(mode === 'create' ? { createdAt: new Date() } : { updatedAt: new Date() })
       };
 
-      dispatch('submit', { itemData, mode });
+      if (mode === 'create') {
+        const docRef = await addDoc(collection(db, 'items'), itemData);
+        dispatch('success', { id: docRef.id });
+      } else if (itemId) {
+        await updateDoc(doc(db, 'items', itemId), itemData);
+        
+        // Update cart items with new product details
+        await updateCartProductDetails(itemId);
+        
+        dispatch('success', { id: itemId });
+      }
+
+      successMessage.set(mode === 'create' ? 'Item created successfully!' : 'Item updated successfully!');
     } catch (err) {
-      console.error(`Error ${mode === 'create' ? 'creating' : 'updating'} item:`, err);
-      throw err;
+      console.error('Error saving item:', err);
+      error.set(err instanceof Error ? err.message : 'Failed to save item');
     } finally {
       isSubmitting = false;
     }
@@ -311,7 +314,7 @@
         <input
           id="itemName"
           type="text"
-          bind:value={itemName}
+          bind:value={formState.itemName}
           class="mt-1 block w-full rounded-md border-gray-600 bg-gray-100 text-gray-900 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
           required
         />
@@ -371,7 +374,7 @@
         <input
           id="price"
           type="number"
-          bind:value={price}
+          bind:value={formState.price}
           min="0"
           step="0.01"
           class="mt-1 block w-full rounded-md border-gray-600 bg-gray-100 text-gray-900 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
@@ -385,7 +388,7 @@
         <input
           id="stock"
           type="number"
-          bind:value={stock}
+          bind:value={formState.stock}
           min="0"
           class="mt-1 block w-full rounded-md border-gray-600 bg-gray-100 text-gray-900 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
           required
@@ -401,12 +404,12 @@
         <!-- Thumbnail Section -->
         <div>
           <!-- Current Thumbnail Preview -->
-          {#if currentThumbnailUrl}
+          {#if formState.thumbnail}
             <div class="mb-2 relative">
               <p class="text-xs font-medium text-gray-600 mb-1">Current Thumbnail</p>
               <div class="relative group">
                 <img
-                  src={currentThumbnailUrl}
+                  src={formState.thumbnail}
                   alt="Current thumbnail"
                   class="h-20 w-20 object-cover rounded-lg"
                 />
@@ -426,7 +429,7 @@
           <!-- Thumbnail Upload -->
           <div>
             <label for="thumbnail" class="block text-sm font-medium text-gray-700">
-              {currentThumbnailUrl ? 'Change Thumbnail' : 'Thumbnail'}
+              {formState.thumbnail ? 'Change Thumbnail' : 'Thumbnail'}
             </label>
             <input
               type="file"
@@ -441,11 +444,11 @@
         <!-- Additional Images Section -->
         <div>
           <!-- Current Images Preview -->
-          {#if currentImageUrls.length > 0}
+          {#if formState.images.length > 0}
             <div class="mb-2">
               <p class="text-xs font-medium text-gray-600 mb-1">Current Images</p>
               <div class="flex gap-2 overflow-x-auto pb-2">
-                {#each currentImageUrls as imageUrl, index}
+                {#each formState.images as imageUrl, index}
                   <div class="relative group">
                     <!-- svelte-ignore a11y_img_redundant_alt -->
                     <img
@@ -471,7 +474,7 @@
           <!-- Images Upload -->
           <div>
             <label for="images" class="block text-sm font-medium text-gray-700">
-              {currentImageUrls.length > 0 ? 'Add More Images' : 'Product Images'}
+              {formState.images.length > 0 ? 'Add More Images' : 'Product Images'}
             </label>
             <input
               type="file"
@@ -500,7 +503,7 @@
         </button>
       </div>
 
-      {#each Object.entries(variations) as [category, values]}
+      {#each Object.entries(formState.variations) as [category, values]}
         <div class="bg-gray-50 p-3 rounded-lg space-y-2">
           <div class="flex items-center gap-2">
             <input
@@ -572,11 +575,11 @@
         </button>
       </div>
 
-      {#each specs as spec, index}
+      {#each formState.specs as spec, index}
         <div class="flex items-center gap-2">
           <input
             type="text"
-            bind:value={specs[index]}
+            bind:value={spec}
             on:input={(e) => {
               const target = e.target as HTMLInputElement;
               handleSpecChange(index, target.value);
@@ -599,7 +602,7 @@
     <div class="space-y-2">
       <h3 class="text-base font-bold text-orange-500">Detailed Information</h3>
       <textarea
-        bind:value={detailedInfo}
+        bind:value={formState.detailedInfo}
         rows="5"
         placeholder="Enter detailed product information..."
         class="block w-full rounded-md border-gray-600 bg-gray-100 text-gray-900 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm"

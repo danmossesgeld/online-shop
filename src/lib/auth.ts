@@ -1,9 +1,19 @@
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, type AuthError } from 'firebase/auth';
 import { auth, db } from './firebase';
 import { doc, setDoc, getDoc, updateDoc, collection, getDocs, type DocumentData } from 'firebase/firestore';
+import { authStore, setAuthUser, setAuthError, clearAuthState, setAuthLoading } from './store/auth';
+import type { AuthState } from './store/auth';
 
-// Define strict types for error codes
-type AuthErrorCode = 'auth/email-already-in-use' | 'auth/invalid-email' | 'auth/weak-password' | 'auth/user-not-found' | 'auth/wrong-password';
+// Consolidate error handling into a single type
+type AuthErrorCode = 
+  | 'auth/email-already-in-use'
+  | 'auth/invalid-email'
+  | 'auth/weak-password'
+  | 'auth/user-not-found'
+  | 'auth/wrong-password'
+  | 'auth/invalid-credential'
+  | 'auth/too-many-requests'
+  | 'auth/network-request-failed';
 
 const handleAuthError = (error: AuthError): Error => {
   const errorMessages: Record<AuthErrorCode, string> = {
@@ -11,12 +21,18 @@ const handleAuthError = (error: AuthError): Error => {
     'auth/invalid-email': 'The email format is invalid.',
     'auth/weak-password': 'The password is too weak.',
     'auth/user-not-found': 'No user found with this email.',
-    'auth/wrong-password': 'Incorrect password.'
+    'auth/wrong-password': 'Incorrect password.',
+    'auth/invalid-credential': 'Invalid login credentials.',
+    'auth/too-many-requests': 'Too many failed login attempts. Please try again later.',
+    'auth/network-request-failed': 'Network error. Please check your connection.'
   };
-  return new Error(errorMessages[error.code as AuthErrorCode] || 'An unknown error occurred.');
+  
+  const errorMessage = errorMessages[error.code as AuthErrorCode] || 'An unknown error occurred.';
+  setAuthError(errorMessage);
+  return new Error(errorMessage);
 };
 
-// Define strict types for user data
+// Consolidate user data types
 export interface UserData {
   email: string;
   type: 'user' | 'admin';
@@ -28,18 +44,67 @@ export interface UserData {
   createdAt: Date;
 }
 
-// Define strict types for signup data
-export interface SignupData {
-  firstName: string;
-  lastName: string;
-  midName: string;
-  address: string;
-  contactNumber: string;
-  type: 'user' | 'admin';
+export interface SignupData extends Omit<UserData, 'email' | 'createdAt'> {
+  email: string;
 }
 
-// Enhanced signup with better type safety and error handling
+// Optimize caching mechanism with a single cache class
+class UserCache {
+  private static instance: UserCache;
+  private typeCache = new Map<string, { type: 'user' | 'admin'; timestamp: number }>();
+  private dataCache = new Map<string, { data: UserData; timestamp: number }>();
+  private readonly TTL = 1000 * 60 * 15; // 15 minutes
+
+  private constructor() {}
+
+  static getInstance(): UserCache {
+    if (!UserCache.instance) {
+      UserCache.instance = new UserCache();
+    }
+    return UserCache.instance;
+  }
+
+  setType(uid: string, type: 'user' | 'admin'): void {
+    this.typeCache.set(uid, { type, timestamp: Date.now() });
+  }
+
+  setData(uid: string, data: UserData): void {
+    this.dataCache.set(uid, { data, timestamp: Date.now() });
+  }
+
+  getType(uid: string): 'user' | 'admin' | null {
+    const cached = this.typeCache.get(uid);
+    if (cached && Date.now() - cached.timestamp < this.TTL) {
+      return cached.type;
+    }
+    return null;
+  }
+
+  getData(uid: string): UserData | null {
+    const cached = this.dataCache.get(uid);
+    if (cached && Date.now() - cached.timestamp < this.TTL) {
+      return cached.data;
+    }
+    return null;
+  }
+
+  clear(): void {
+    this.typeCache.clear();
+    this.dataCache.clear();
+  }
+}
+
+const userCache = UserCache.getInstance();
+
+// Optimize store access with a single subscription
+let currentAuthState: AuthState;
+authStore.subscribe(state => {
+  currentAuthState = state;
+})();
+
+// Enhanced signup with better type safety, error handling, and store integration
 export const signup = async (email: string, password: string, userData: SignupData): Promise<UserData> => {
+  setAuthLoading(true);
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
@@ -56,27 +121,55 @@ export const signup = async (email: string, password: string, userData: SignupDa
     };
 
     await setDoc(doc(db, 'users', user.uid), userDoc);
+    
+    // Update auth store and caches
+    setAuthUser(user, userDoc);
+    userCache.setData(user.uid, userDoc);
+    userCache.setType(user.uid, userDoc.type);
+    
     return userDoc;
   } catch (error) {
     console.error('Error in signup:', error);
     throw handleAuthError(error as AuthError);
+  } finally {
+    setAuthLoading(false);
   }
 };
 
-// Get user type with better type safety
+// Get user type with improved caching
 export const getUserType = async (uid: string): Promise<'user' | 'admin'> => {
+  // Check cache first with TTL validation
+  const cachedData = userCache.getType(uid);
+  if (cachedData) {
+    return cachedData;
+  }
+
   try {
     const userDoc = await getDoc(doc(db, 'users', uid));
-    return (userDoc.exists() ? userDoc.data().type : 'user') as 'user' | 'admin';
+    const userType = (userDoc.exists() ? userDoc.data().type : 'user') as 'user' | 'admin';
+    
+    // Cache the result with timestamp
+    userCache.setType(uid, userType);
+    return userType;
   } catch (error) {
     console.error('Error getting user type:', error);
     return 'user';
   }
 };
 
-// Ensure user document exists with better type safety
-export const ensureUserDocument = async (uid: string): Promise<void> => {
+// Optimize ensureUserDocument with better caching
+export const ensureUserDocument = async (uid: string): Promise<UserData | null> => {
   try {
+    // Check cache first
+    const cachedData = userCache.getData(uid);
+    if (cachedData) return cachedData;
+
+    // If we have current user data in auth store, use it
+    if (currentAuthState.userData?.email) {
+      userCache.setData(uid, currentAuthState.userData);
+      return currentAuthState.userData;
+    }
+
     const userDoc = await getDoc(doc(db, 'users', uid));
     if (!userDoc.exists() && auth.currentUser) {
       const userData: UserData = {
@@ -85,7 +178,14 @@ export const ensureUserDocument = async (uid: string): Promise<void> => {
         createdAt: new Date()
       };
       await setDoc(doc(db, 'users', uid), userData);
+      userCache.setData(uid, userData);
+      return userData;
+    } else if (userDoc.exists()) {
+      const userData = userDoc.data() as UserData;
+      userCache.setData(uid, userData);
+      return userData;
     }
+    return null;
   } catch (error) {
     console.error('Error ensuring user document:', error);
     throw new Error('Failed to ensure user document exists');
@@ -96,6 +196,10 @@ export const ensureUserDocument = async (uid: string): Promise<void> => {
 export const setUserAsAdmin = async (uid: string): Promise<boolean> => {
   try {
     await updateDoc(doc(db, 'users', uid), { type: 'admin' });
+    // Update cache
+    if (userCache.getType(uid)) {
+      userCache.setType(uid, 'admin');
+    }
     return true;
   } catch (error) {
     console.error('Error setting user as admin:', error);
@@ -103,25 +207,44 @@ export const setUserAsAdmin = async (uid: string): Promise<boolean> => {
   }
 };
 
-// Enhanced login with better error handling
+// Enhanced login with better error handling and store integration
 export const login = async (email: string, password: string): Promise<UserData> => {
+  setAuthLoading(true);
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    await ensureUserDocument(userCredential.user.uid);
-    const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-    return userDoc.data() as UserData;
+    const user = userCredential.user;
+    
+    await ensureUserDocument(user.uid);
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    
+    // Update auth store and caches
+    const userData = userDoc.data() as UserData;
+    setAuthUser(user, userData);
+    userCache.setData(user.uid, userData);
+    userCache.setType(user.uid, userData.type);
+    
+    return userData;
   } catch (error) {
     throw handleAuthError(error as AuthError);
+  } finally {
+    setAuthLoading(false);
   }
 };
 
-// Logout function with better error handling
+// Optimize logout with better cleanup
 export const logout = async (): Promise<void> => {
+  setAuthLoading(true);
   try {
     await signOut(auth);
+    clearAuthState();
+    userCache.clear();
   } catch (error) {
     console.error('Error during logout:', error);
-    throw new Error('Failed to logout. Please try again.');
+    const errorMessage = 'Failed to logout. Please try again.';
+    setAuthError(errorMessage);
+    throw new Error(errorMessage);
+  } finally {
+    setAuthLoading(false);
   }
 };
 
@@ -138,4 +261,14 @@ export const scanUserTypes = async (): Promise<Array<{ id: string; email: string
     console.error('Error scanning user types:', error);
     return [];
   }
+};
+
+// Check if current user has admin rights (using cached state)
+export const isAdmin = (): boolean => {
+  return currentAuthState.isAdmin;
+};
+
+// Check if user is authenticated (using cached state)
+export const isAuthenticated = (): boolean => {
+  return currentAuthState.isAuthenticated;
 };

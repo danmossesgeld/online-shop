@@ -136,8 +136,10 @@
 <style>
   /* Optimize animations with hardware acceleration */
   .animate-pulse {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     will-change: opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   @keyframes pulse {
@@ -149,9 +151,9 @@
     }
   }
 
-  /* Optimized spin animation */
+  /* Optimized spin animation with faster duration */
   .animate-spin {
-    animation: spin 0.8s linear infinite;
+    animation: spin 0.6s linear infinite;
     will-change: transform;
     transform: translateZ(0);
     backface-visibility: hidden;
@@ -170,5 +172,12 @@
   svg {
     shape-rendering: geometricPrecision;
     text-rendering: geometricPrecision;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* Add transition for smoother state changes */
+  .fixed {
+    transition: opacity 0.2s ease-in-out;
   }
 </style>

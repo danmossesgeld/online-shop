@@ -2,7 +2,7 @@
     import { writable } from 'svelte/store';
     import { auth } from '$lib/firebase';
     import { signOut, type User } from 'firebase/auth';
-    import { cart, cartCount, cartTotal, removeFromCart, updateCartQuantity, clearCart } from '$lib/store/cart';
+    import { cart, cartCount, cartTotal, removeFromCart, updateQuantity, clearCart } from '$lib/store/cart';
     import { onMount, onDestroy } from 'svelte';
     import { goto, invalidateAll } from '$app/navigation';
     import { page } from '$app/stores';
@@ -117,7 +117,7 @@
     };
 
     const handleUpdateQuantity = (itemId: string, quantity: number, selectedVariations?: Record<string, string> | null): void => {
-        updateCartQuantity(itemId, quantity, selectedVariations || undefined);
+        updateQuantity(itemId, quantity, selectedVariations || undefined);
     };
 
     const handleClearCart = (): void => {
@@ -143,8 +143,8 @@
             searchResults = [];
             showSearchDropdown = false;
             
-            // Force a complete page reload to reset all state
-            window.location.href = '/mainpage';
+            // Use goto instead of window.location to maintain reactivity
+            await goto('/mainpage', { replaceState: true });
         } catch (err) {
             console.error('Error resetting home:', err);
             notifications.add('Error resetting home page', 'error');
@@ -176,7 +176,10 @@
             searchQuery = q;
         }
 
-        fetchItems();
+        // Always fetch items regardless of auth state
+        fetchItems().catch(err => {
+            console.error('Error in onMount fetchItems:', err);
+        });
 
         document.addEventListener('click', handleSearchClickOutside);
         document.addEventListener('click', handleCartClickOutside);
@@ -186,6 +189,26 @@
             document.removeEventListener('click', handleCartClickOutside);
         };
     });
+
+    // Watch for URL changes to update search query and trigger reactivity
+    $: {
+        const q = $page.url.searchParams.get('q');
+        const category = $page.url.searchParams.get('category');
+        if (q !== null && q !== searchQuery) {
+            searchQuery = q;
+            invalidateAll();
+        }
+        if (category !== null) {
+            invalidateAll();
+        }
+    }
+
+    // Watch for cart changes to trigger reactivity
+    $: {
+        if ($cart.length > 0) {
+            invalidateAll();
+        }
+    }
 
     // Reactive statements
     $: {
@@ -199,22 +222,6 @@
         } else {
             searchResults = [];
             showSearchDropdown = false;
-        }
-    }
-
-    // Watch for URL changes to update search query
-    $: {
-        const q = $page.url.searchParams.get('q');
-        if (q !== null && q !== searchQuery) {
-            searchQuery = q;
-        }
-    }
-
-    $: {
-        if (showCart) {
-            setTimeout(() => document.addEventListener('click', handleCartClickOutside));
-        } else {
-            document.removeEventListener('click', handleCartClickOutside);
         }
     }
 </script>
