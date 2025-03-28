@@ -39,6 +39,28 @@ interface OrderData {
   userEmail: string | null;
 }
 
+// Define strict types for payment data
+interface GooglePayPaymentData {
+  paymentMethodData: {
+    type: string;
+    description: string;
+    info: {
+      cardDetails: string;
+      cardNetwork: string;
+      billingAddress?: {
+        name: string;
+        postalCode: string;
+        countryCode: string;
+        phoneNumber?: string;
+      };
+    };
+    tokenizationData: {
+      type: string;
+      token: string;
+    };
+  };
+}
+
 const PENDING_ORDER_KEY = 'pending_order_data';
 const db = getFirestore();
 
@@ -413,56 +435,46 @@ export const clearPendingOrderData = (): void => {
 };
 
 // Modify the checkout function
-export const checkout = async (): Promise<string> => {
-  const user = auth.currentUser;
-  if (!user) {
-    notifications.add('Please log in to checkout', 'error');
-    throw new Error('User must be logged in to checkout');
+export const checkout = async (paymentData?: GooglePayPaymentData): Promise<string> => {
+  const userId = checkAuth();
+  if (!userId) {
+    throw new Error('User not authenticated');
   }
 
-  // Use pending order data if available, otherwise use current cart
-  const cartData = await getPendingOrderData() || get(cart);
-  if (cartData.length === 0) {
-    notifications.add('Cart is empty', 'error');
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const items = get(cart);
+  if (items.length === 0) {
     throw new Error('Cart is empty');
   }
 
-  try {
-    // Create order document with cleaned data
-    const orderData: OrderData = {
-      userId: user.uid,
-      items: cartData,
-      totalPrice: cartData.reduce((sum, item) => {
-        const price = item.variationPrice || item.price;
-        return sum + price * item.quantity;
-      }, 0),
-      status: 'pending',
-      timestamp: new Date(),
-      userEmail: user.email || null
-    };
+  const totalPrice = items.reduce((sum, item) => 
+    sum + (item.variationPrice || item.price) * item.quantity, 0
+  );
 
-    // Save order to Firestore
-    const orderRef = await addDoc(collection(getFirestore(), 'orders'), {
-      ...orderData,
-      timestamp: serverTimestamp()
+  try {
+    // Create order document
+    const orderRef = await addDoc(collection(db, 'orders'), {
+      userId,
+      items,
+      totalPrice,
+      status: 'processing',
+      timestamp: serverTimestamp(),
+      userEmail: user.email,
+      paymentMethod: paymentData ? 'google_pay' : 'manual',
+      paymentData: paymentData || null
     });
 
-    if (!orderRef.id) {
-      throw new Error('Failed to create order document');
-    }
+    // Clear the cart
+    await syncCartWithFirestore(userId, []);
 
-    // Verify the order was saved by fetching it back
-    const savedOrder = await getDoc(orderRef);
-    if (!savedOrder.exists()) {
-      throw new Error('Order was not properly saved');
-    }
-
-    // Clear pending order data after successful order creation
-    clearPendingOrderData();
     return orderRef.id;
-  } catch (error) {
-    console.error('Error during checkout:', error);
-    notifications.add('Failed to process checkout', 'error');
-    throw new Error('Failed to process checkout');
+  } catch (err) {
+    console.error('Error during checkout:', err);
+    notifications.add('Failed to process order', 'error');
+    throw new Error('Checkout failed');
   }
 };

@@ -17,16 +17,32 @@
   // Local state
   let unsubscribe: (() => void) | undefined;
   let currentPath: string = '';
+  let previousPath: string = '';
   let isPublicRoute: boolean = false;
   let authCheckInProgress = false;
+  let initialAuthCheckComplete = false;
   
   // Cache for paths that have been checked
   const checkedPaths = new Set<string>();
   
   // Check if current path is a public route
   $: {
+    previousPath = currentPath;
     currentPath = $page?.url?.pathname || '';
     isPublicRoute = publicRoutes.some(route => currentPath.startsWith(route));
+    
+    // If we're navigating between authenticated routes, don't show loading
+    const isNavigatingBetweenProtectedRoutes = 
+      initialAuthCheckComplete && 
+      $authStore.isAuthenticated && 
+      !isPublicRoute && 
+      previousPath && 
+      !publicRoutes.some(route => previousPath.startsWith(route));
+      
+    if (isNavigatingBetweenProtectedRoutes) {
+      // Mark as checked immediately to avoid loading flash
+      checkedPaths.add(currentPath);
+    }
   }
 
   // Optimized authentication state change handler with debouncing
@@ -37,15 +53,26 @@
     // Set to prevent concurrent checks
     authCheckInProgress = true;
     
+    // Set initial loading state only if not a public route
+    if (!isPublicRoute && !initialAuthCheckComplete) {
+      setAuthLoading(true);
+    }
+    
     unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
-        // Skip processing if we're on a public route and already loaded
-        if (isPublicRoute && !$authStore.isLoading && checkedPaths.has(currentPath)) {
+        // If navigating between protected routes and already authenticated
+        // Skip processing to prevent flickering
+        if (checkedPaths.has(currentPath) && $authStore.isAuthenticated && !isPublicRoute) {
           authCheckInProgress = false;
           return;
         }
         
-        setAuthLoading(true);
+        // Skip processing if we're on a public route and already loaded
+        if (isPublicRoute && !$authStore.isLoading && checkedPaths.has(currentPath)) {
+          authCheckInProgress = false;
+          initialAuthCheckComplete = true;
+          return;
+        }
         
         if (user) {
           // Use cached user data if available in store
@@ -53,6 +80,7 @@
             setAuthLoading(false);
             checkedPaths.add(currentPath);
             authCheckInProgress = false;
+            initialAuthCheckComplete = true;
             return;
           }
           
@@ -74,8 +102,8 @@
           // User is not logged in
           setAuthUser(null);
           
-          // Only redirect if not on a public route
-          if (!isPublicRoute) {
+          // Only redirect if not on a public route and initial check is complete
+          if (!isPublicRoute && initialAuthCheckComplete) {
             goto(loginPath);
           }
         }
@@ -88,6 +116,7 @@
       } finally {
         setAuthLoading(false);
         authCheckInProgress = false;
+        initialAuthCheckComplete = true;
       }
     });
   }
@@ -103,7 +132,7 @@
   });
 </script>
 
-{#if $authStore.isLoading && !isPublicRoute}
+{#if $authStore.isLoading && !isPublicRoute && !initialAuthCheckComplete && !checkedPaths.has(currentPath)}
   <LoadingSpinner 
     message={spinnerMessage} 
     fullScreen={true} 

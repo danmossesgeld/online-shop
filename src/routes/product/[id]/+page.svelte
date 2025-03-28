@@ -411,12 +411,11 @@
                       </a>
                     {/each}
                     <!-- Show More Button -->
-                    <a 
-                      href="/mainpage"
-                      on:click|preventDefault={() => {
+                    <button 
+                      on:click={() => {
                         if (product) {
                           const mainCategory = product.category.split(' > ')[0];
-                          goto(`/mainpage?category=${encodeURIComponent(mainCategory)}`, { replaceState: true });
+                          goto(`/mainpage?category=${encodeURIComponent(mainCategory)}`);
                         }
                       }}
                       class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0 flex items-center justify-center"
@@ -426,7 +425,7 @@
                         <p class="text-sm font-medium text-gray-900">Show More</p>
                         <p class="text-xs text-gray-500 mt-1">View all {product?.category.split(' > ')[0]} items</p>
                       </div>
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>

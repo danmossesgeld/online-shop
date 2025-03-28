@@ -1,10 +1,8 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import { notifications } from '$lib/components/Notification.svelte';
-    import { auth } from '$lib/firebase';
     import { goto } from '$app/navigation';
     import { authStore as globalAuthStore } from '$lib/store/auth';
-    import { isAuthenticated } from '$lib/auth';
     import { 
         itemsStore, 
         errorStore, 
@@ -17,64 +15,42 @@
     } from '$lib/store/items';
 
     let mounted = false;
-    let unsubscribeAuth: () => void;
-    let authChecked = false;
-
-    // Subscribe to global auth store to immediately update our local state
+    
+    // Data loading function to avoid duplication
+    function loadData() {
+        if (mounted && $globalAuthStore.isAuthenticated) {
+            fetchItems();
+            fetchCategories();
+            startItemsListener();
+            startCategoriesListener();
+        }
+    }
+    
+    // Subscribe to global auth store changes
     $: {
-        const isAuth = $globalAuthStore.isAuthenticated;
-        if (!authChecked && !$globalAuthStore.isLoading) {
-            authChecked = true;
-            
-            if (!isAuth) {
-                goto('/login');
-            } else if (mounted) {
-                // Only load items and categories if we're authenticated and mounted
-                fetchItems();
-                fetchCategories();
-                startItemsListener();
-                startCategoriesListener();
+        // Only proceed if we're mounted and the auth state is determined
+        if (mounted && !$globalAuthStore.isLoading) {
+            // If authenticated, load data
+            if ($globalAuthStore.isAuthenticated) {
+                loadData();
             }
+            // No need to redirect here, that's handled by AuthChecker
         }
     }
 
     onMount(() => {
         mounted = true;
         
-        // If auth state is already established, use it immediately
-        if (!$globalAuthStore.isLoading) {
-            authChecked = true;
-            
-            if (!$globalAuthStore.isAuthenticated) {
-                goto('/login');
-            } else {
-                fetchItems();
-                fetchCategories();
-                startItemsListener();
-                startCategoriesListener();
-            }
-        } else {
-            // Fallback to traditional auth checking if needed
-            unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
-                if (!user) {
-                    goto('/login');
-                    return;
-                }
-
-                await Promise.all([fetchItems(), fetchCategories()]);
-                startItemsListener();
-                startCategoriesListener();
-            });
+        // Initial load if auth is already available
+        if (!$globalAuthStore.isLoading && $globalAuthStore.isAuthenticated) {
+            loadData();
         }
+    });
 
-        return () => {
-            mounted = false;
-            if (unsubscribeAuth) {
-                unsubscribeAuth();
-            }
-            stopItemsListener();
-            stopCategoriesListener();
-        };
+    onDestroy(() => {
+        mounted = false;
+        stopItemsListener();
+        stopCategoriesListener();
     });
 </script>
 

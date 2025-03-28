@@ -1,7 +1,6 @@
 import { writable, derived } from 'svelte/store';
-import { getFirestore, collection, getDocs, doc, getDoc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
-
-const db = getFirestore();
+import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '$lib/firebase';
 
 export interface Item {
   id: string;
@@ -235,6 +234,17 @@ export async function deleteCategory(category: string) {
   }
 }
 
-// Initialize stores
-fetchItems();
-fetchCategories(); 
+// Function to initialize stores after authentication
+export async function initializeStores() {
+  try {
+    _loadingStore.set(true);
+    await Promise.all([fetchItems(), fetchCategories()]);
+    startItemsListener();
+    startCategoriesListener();
+  } catch (err) {
+    console.error('Error initializing stores:', err);
+    _errorStore.set('Error initializing stores');
+  } finally {
+    _loadingStore.set(false);
+  }
+} 

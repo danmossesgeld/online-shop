@@ -1,0 +1,12 @@
+{
+  "name": "DOKISHOP",
+  "short_name": "DOKISHOP",
+  "description": "DOKISHOP Payment",
+  "payment": {
+    "supported_methods": ["https://google.com/pay"],
+    "supported_networks": ["visa", "mastercard"],
+    "supported_types": ["card"],
+    "supported_delegations": ["shippingAddress", "payerName", "payerPhone", "payerEmail"],
+    "test_mode": true
+  }
+} 

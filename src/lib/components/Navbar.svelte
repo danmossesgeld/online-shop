@@ -143,8 +143,18 @@
             searchResults = [];
             showSearchDropdown = false;
             
-            // Use goto instead of window.location to maintain reactivity
-            await goto('/mainpage', { replaceState: true });
+            // Don't use goto which can cause a full page reload
+            // Instead, check if we're already on the mainpage path
+            if ($page.url.pathname === '/mainpage') {
+                // Just clear the search params without reloading
+                const url = new URL(window.location.href);
+                url.search = '';
+                history.pushState({}, '', url.toString());
+                await invalidateAll();
+            } else {
+                // Use goto with keepFocus and noscroll to avoid full reload
+                await goto('/mainpage', { keepFocus: true, noScroll: true });
+            }
         } catch (err) {
             console.error('Error resetting home:', err);
             notifications.add('Error resetting home page', 'error');

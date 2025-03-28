@@ -1,18 +1,17 @@
 <script lang="ts">
-  import { auth } from '$lib/firebase';
+  import { auth, db } from '$lib/firebase';
   import { writable } from 'svelte/store';
   import { onMount } from 'svelte';
   import { signOut, type User } from 'firebase/auth';
-  import { getFirestore, collection, getDocs, doc, getDoc } from 'firebase/firestore';
+  import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
   import Navbar from '$lib/components/Navbar.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import { page } from '$app/stores';
-  import { itemsStore, categoriesStore, loadingStore, errorStore, type Item, type Category, fetchItems, fetchCategories } from '$lib/store/items';
+  import { itemsStore, categoriesStore, loadingStore, errorStore, type Item, type Category, fetchItems, fetchCategories, initializeStores } from '$lib/store/items';
   import { authStore as globalAuthStore } from '$lib/store/auth';
   import { notifications } from '$lib/components/Notification.svelte';
   import { goto } from '$app/navigation';
 
-  const db = getFirestore();
   $: user = $globalAuthStore.user;
   let adminEmails: string[] = [];
 
@@ -54,8 +53,10 @@
       isSearchActive = false;
     }
     const category = $page.url.searchParams.get('category');
-    if (category !== null) {
-      selectCategory(category);
+    if (category !== null && category !== selectedCategory) {
+      selectedCategory = category;
+      selectedGroup = null;
+      selectedSubcategory = null;
     }
   }
 
@@ -142,13 +143,12 @@
   ) as Record<string, Item[]>;
 
   onMount(() => {
-    // Fetch both items and categories on mount
-    Promise.all([fetchItems(), fetchCategories()]).then(() => {
-      // Only check admin status if user is authenticated
-      if (user) {
+    // Only initialize stores if user is authenticated
+    if (user) {
+      initializeStores().then(() => {
         checkAdminStatus();
-      }
-    });
+      });
+    }
   });
 
   async function checkAdminStatus() {

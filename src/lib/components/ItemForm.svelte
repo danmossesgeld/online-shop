@@ -6,6 +6,7 @@
   import { collection, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
   import { notifications } from '$lib/components/Notification.svelte';
   import { updateCartProductDetails } from '$lib/store/cart';
+  import { goto } from '$app/navigation';
 
   const dispatch = createEventDispatcher();
 
@@ -256,6 +257,7 @@
         const thumbnailRef = ref(storage, `products/${itemId || Date.now()}/thumbnail`);
         await uploadBytes(thumbnailRef, thumbnail);
         thumbnailURL = await getDownloadURL(thumbnailRef);
+        notifications.add('Thumbnail uploaded successfully', 'success');
       }
 
       // Upload new images if provided
@@ -266,6 +268,7 @@
           return getDownloadURL(imageRef);
         });
         imageURLs = await Promise.all(uploadPromises);
+        notifications.add(`${images.length} images uploaded successfully`, 'success');
       }
 
       // Prepare item data
@@ -284,20 +287,27 @@
 
       if (mode === 'create') {
         const docRef = await addDoc(collection(db, 'items'), itemData);
+        notifications.add('Item created successfully!', 'success');
         dispatch('success', { id: docRef.id });
+        goto('/userdashboard/items');
       } else if (itemId) {
         await updateDoc(doc(db, 'items', itemId), itemData);
+        notifications.add('Item updated successfully!', 'success');
         
         // Update cart items with new product details
         await updateCartProductDetails(itemId);
+        notifications.add('Cart items updated with new product details', 'success');
         
         dispatch('success', { id: itemId });
+        goto('/userdashboard/items');
       }
 
       successMessage.set(mode === 'create' ? 'Item created successfully!' : 'Item updated successfully!');
     } catch (err) {
       console.error('Error saving item:', err);
-      error.set(err instanceof Error ? err.message : 'Failed to save item');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save item';
+      notifications.add(errorMessage, 'error');
+      error.set(errorMessage);
     } finally {
       isSubmitting = false;
     }
