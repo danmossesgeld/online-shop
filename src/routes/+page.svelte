@@ -2,14 +2,17 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { authStore } from '$lib/store/auth';
+  import { page } from '$app/stores';
+
+  // Immediate redirection if not authenticated
+  if (!$authStore.isAuthenticated) {
+    goto('/login', { replaceState: true });
+  }
 
   onMount(() => {
     // If user is already authenticated, redirect to mainpage
     if ($authStore.isAuthenticated) {
-      goto('/mainpage');
-    } else {
-      // Otherwise, redirect to login
-      goto('/login');
+      goto('/mainpage', { replaceState: true });
     }
   });
 </script>

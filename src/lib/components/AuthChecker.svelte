@@ -99,22 +99,19 @@
             setAuthUser(user, basicUserData);
           }
         } else {
-          // User is not logged in
-          setAuthUser(null);
+          // User is not authenticated
+          setAuthUser(null, null);
+          setAuthLoading(false);
           
-          // Only redirect if not on a public route and initial check is complete
-          if (!isPublicRoute && initialAuthCheckComplete) {
-            goto(loginPath);
+          // If not on a public route, redirect to login
+          if (!isPublicRoute) {
+            goto(loginPath, { replaceState: true });
           }
         }
-        
-        // Mark this path as checked
-        checkedPaths.add(currentPath);
       } catch (error) {
         console.error('Auth state change error:', error);
-        setAuthError(error instanceof Error ? error.message : 'Authentication error');
+        setAuthError(error instanceof Error ? error.message : 'Authentication error occurred');
       } finally {
-        setAuthLoading(false);
         authCheckInProgress = false;
         initialAuthCheckComplete = true;
       }
