@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "svelte-shop-b36e0"
-  }
+  },
+  "targets": {
+    "svelte-shop-b36e0": {
+      "hosting": {
+        "doki": [
+          "doki-shop"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

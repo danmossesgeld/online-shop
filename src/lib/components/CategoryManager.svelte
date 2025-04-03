@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, getDoc, type DocumentData } from 'firebase/firestore';
   import { notifications } from '$lib/components/Notification.svelte';
+  import { categoriesStore, loadingStore, errorStore, updateCategories, deleteCategory, fetchCategories } from '$lib/store/items';
 
   const db = getFirestore();
   type CategoryGroups = Record<string, string[]>;
@@ -10,47 +11,38 @@
     [key: string]: string[] | string | undefined;
   }
   
+  // Local state with reactive declarations
   let categories: Record<string, CategoryGroups> = {};
-  let loading = true;
+  let categoryIcons: Record<string, string> = {};
+  $: loading = $loadingStore;
+
+  // Subscribe to the categoriesStore with proper reactivity
+  $: {
+    // Transform the categories from the store format to the local format
+    const categoriesArray = $categoriesStore;
+    const newCategories: Record<string, CategoryGroups> = {};
+    const newCategoryIcons: Record<string, string> = {};
+    
+    categoriesArray.forEach(cat => {
+      newCategories[cat.name] = cat.groups;
+      newCategoryIcons[cat.name] = cat.icon;
+    });
+    
+    categories = newCategories;
+    categoryIcons = newCategoryIcons;
+  }
+
   let newMainCategory = '';
   let newGroup = '';
   let newSubcategory = '';
   let selectedMainCategory = '';
   let selectedGroup = '';
-  let categoryIcons: Record<string, string> = {};
 
   const DEFAULT_ICON = '<iconify-icon icon="mdi:category"></iconify-icon>';
 
   onMount(async () => {
-    await loadCategories();
+    await fetchCategories();
   });
-
-  async function loadCategories() {
-    try {
-      const querySnapshot = await getDocs(collection(db, 'itemcategory'));
-      categories = {};
-      categoryIcons = {};
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        const groups: CategoryGroups = {};
-        
-        // Separate arrays (groups) from other fields
-        Object.entries(data).forEach(([key, value]) => {
-          if (key !== 'icon' && Array.isArray(value)) {
-            groups[key] = value;
-          }
-        });
-        
-        categories[doc.id] = groups;
-        categoryIcons[doc.id] = data.icon || DEFAULT_ICON;
-      });
-      loading = false;
-    } catch (err) {
-      console.error('Error loading categories:', err);
-      notifications.add('Error loading categories', 'error');
-      loading = false;
-    }
-  }
 
   async function addMainCategory() {
     if (!newMainCategory.trim()) {
@@ -64,7 +56,7 @@
         icon: DEFAULT_ICON
       };
       await setDoc(docRef, newData);
-      await loadCategories();
+      await fetchCategories();
       newMainCategory = '';
       notifications.add('Category added successfully');
     } catch (err) {
@@ -96,8 +88,8 @@
         }
       });
       
-      await setDoc(categoryRef, newData);
-      await loadCategories();
+      await updateCategories(selectedMainCategory, newData);
+      await fetchCategories();
       newGroup = '';
       notifications.add('Group added successfully');
     } catch (err) {
@@ -132,8 +124,8 @@
         }
       });
       
-      await setDoc(categoryRef, newData);
-      await loadCategories();
+      await updateCategories(selectedMainCategory, newData);
+      await fetchCategories();
       newSubcategory = '';
       notifications.add('Subcategory added successfully');
     } catch (err) {
@@ -148,8 +140,8 @@
     }
 
     try {
-      await deleteDoc(doc(db, 'itemcategory', category));
-      await loadCategories();
+      await deleteCategory(category);
+      await fetchCategories();
       notifications.add('Category deleted successfully');
     } catch (err) {
       console.error('Error deleting category:', err);
@@ -178,8 +170,8 @@
         }
       });
       
-      await setDoc(categoryRef, newData);
-      await loadCategories();
+      await updateCategories(category, newData);
+      await fetchCategories();
       notifications.add('Group deleted successfully');
     } catch (err) {
       console.error('Error deleting group:', err);
@@ -212,8 +204,8 @@
         }
       });
       
-      await setDoc(categoryRef, newData);
-      await loadCategories();
+      await updateCategories(category, newData);
+      await fetchCategories();
       notifications.add('Subcategory deleted successfully');
     } catch (err) {
       console.error('Error deleting subcategory:', err);
@@ -243,7 +235,7 @@
         }
       });
       
-      await setDoc(categoryRef, newData);
+      await updateCategories(category, newData);
       categoryIcons[category] = iconTag.trim();
       notifications.add('Icon updated successfully');
     } catch (err) {

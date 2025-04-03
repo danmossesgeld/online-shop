@@ -1,21 +1,18 @@
 <script lang="ts">
-  import { auth } from '$lib/firebase';
+  import { auth, db } from '$lib/firebase';
   import { writable } from 'svelte/store';
   import { onMount } from 'svelte';
   import { signOut, type User } from 'firebase/auth';
-  import { getFirestore, collection, getDocs, doc, getDoc } from 'firebase/firestore';
-  import { cart, addToCart, cartCount } from '$lib/store/cart';
+  import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
   import Navbar from '$lib/components/Navbar.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import { page } from '$app/stores';
-  import { itemsStore, loadingStore, errorStore } from './+layout.svelte';
+  import { itemsStore, categoriesStore, loadingStore, errorStore, type Item, type Category, fetchItems, fetchCategories, initializeStores } from '$lib/store/items';
+  import { authStore as globalAuthStore } from '$lib/store/auth';
   import { notifications } from '$lib/components/Notification.svelte';
   import { goto } from '$app/navigation';
 
-  const db = getFirestore();
-  let user: User | null = null;
-  let loading = true;
-  const error = writable('');
+  $: user = $globalAuthStore.user;
   let adminEmails: string[] = [];
 
   const formatPrice = (price: number) => {
@@ -25,26 +22,7 @@
     }).format(price);
   };
 
-  interface Item {
-    id: string;
-    itemName: string;
-    price: number;
-    thumbnail: string;
-    category: string;
-    group?: string;
-    subcategory?: string;
-    description?: string;
-  }
-
-  interface Category {
-    name: string;
-    groups: Record<string, string[]>;
-    icon: string;
-  }
-
-  let items: Item[] = [];
   let searchQuery = '';
-  let categories: Category[] = [];
   let selectedCategory: string | null = null;
   let selectedGroup: string | null = null;
   let selectedSubcategory: string | null = null;
@@ -54,14 +32,10 @@
   // Add new state for expanded categories
   let expandedCategories: Set<string> = new Set();
 
-  // Reactive statement to update currentCategory
-  $: {
-    if (selectedCategory) {
-      currentCategory = categories.find(c => c.name === selectedCategory) || null;
-    } else {
-      currentCategory = null;
-    }
-  }
+  // Store subscriptions and reactive declarations
+  $: items = $itemsStore;
+  $: categories = $categoriesStore;
+  $: isLoading = $loadingStore || $itemsStore.length === 0 || $categoriesStore.length === 0;
 
   // Define the sort options type explicitly.
   type SortOption = 'relevance' | 'priceAsc' | 'priceDesc' | 'nameAsc' | 'nameDesc';
@@ -79,25 +53,17 @@
       isSearchActive = false;
     }
     const category = $page.url.searchParams.get('category');
-    if (category !== null) {
-      selectCategory(category);
-    }
-  }
-
-  // Subscribe to stores from layout
-  $: {
-    items = $itemsStore;
-    loading = $loadingStore;
-    if ($errorStore) {
-      error.set($errorStore);
-      notifications.add($errorStore, 'error');
+    if (category !== null && category !== selectedCategory) {
+      selectedCategory = category;
+      selectedGroup = null;
+      selectedSubcategory = null;
     }
   }
 
   // Reactive filtered items based on search and category filters
   $: filteredItems = (() => {
     try {
-      let filtered = items;
+      let filtered = [...$itemsStore]; // Use $ shorthand for direct store access
       
       // Apply search filter
       if (searchQuery.trim()) {
@@ -119,7 +85,7 @@
         }
         if (selectedSubcategory) {
           // Filter out the 'icon' field from subcategories
-          const subcategories = categories.find(c => c.name === selectedCategory)?.groups[selectedGroup ?? ''] ?? [];
+          const subcategories = $categoriesStore.find(c => c.name === selectedCategory)?.groups[selectedGroup ?? ''] ?? [];
           const validSubcategories = subcategories.filter(sub => sub !== 'icon');
           if (!validSubcategories.includes(selectedSubcategory)) return false;
           selectedParts.push(selectedSubcategory);
@@ -154,54 +120,55 @@
     }
   })();
 
+  // Reactive statement to update currentCategory
+  $: {
+    if (selectedCategory) {
+      currentCategory = $categoriesStore.find(c => c.name === selectedCategory) || null;
+    } else {
+      currentCategory = null;
+    }
+  }
+
+  // Create reactive category items store
+  $: categoryItems = selectedCategory 
+    ? filteredItems.filter(item => item.category.startsWith(selectedCategory as string))
+    : [];
+
+  // Create reactive category items by name store
+  $: categoryItemsByName = Object.fromEntries(
+    $categoriesStore.map(category => [
+      category.name,
+      filteredItems.filter(item => item.category.startsWith(category.name))
+    ])
+  ) as Record<string, Item[]>;
+
   onMount(() => {
-    const unsubscribe = auth.onAuthStateChanged(async currentUser => {
-      user = currentUser;
-      if (!user) {
-        // If not authenticated, redirect to login
-        goto('/login');
-        return;
-      }
-
-      try {
-        // Check if user is admin
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
-          // Only scan users if admin
-          const usersSnapshot = await getDocs(collection(db, 'users'));
-          usersSnapshot.forEach(doc => {
-            const userData = doc.data();
-            if (userData.role === 'admin') {
-              adminEmails.push(userData.email);
-            }
-          });
-        }
-
-        // Fetch categories only after authentication is confirmed
-        await fetchCategories();
-      } catch (err) {
-        console.error('Error during initialization:', err);
-        notifications.add('Error loading data. Please try again later.', 'error');
-      }
-      loading = false;
-    });
-
-    return () => unsubscribe();
+    // Only initialize stores if user is authenticated
+    if (user) {
+      initializeStores().then(() => {
+        checkAdminStatus();
+      });
+    }
   });
 
-  const fetchCategories = async () => {
+  async function checkAdminStatus() {
+    if (!user) return;
+
     try {
-      const querySnapshot = await getDocs(collection(db, 'itemcategory'));
-      categories = querySnapshot.docs.map(doc => ({
-        name: doc.id,
-        groups: doc.data(),
-        icon: doc.data().icon || '<iconify-icon icon="material-symbols:category" class="text-orange-500"></iconify-icon>'
-      }));
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists() && userDoc.data().role === 'admin') {
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        usersSnapshot.forEach(doc => {
+          const userData = doc.data();
+          if (userData.role === 'admin') {
+            adminEmails.push(userData.email);
+          }
+        });
+      }
     } catch (err) {
-      console.error('Error fetching categories:', err);
-      notifications.add('Error fetching categories. Please try again later.', 'error');
+      console.error('Error checking admin status:', err);
     }
-  };
+  }
 
   const selectCategory = (category: string) => {
     if (category === selectedCategory) {
@@ -229,21 +196,6 @@
     }
   };
 
-  const handleAddToCart = (product: Item) => {
-    try {
-      addToCart({
-        id: product.id,
-        name: product.itemName,
-        price: product.price,
-        thumbnail: product.thumbnail
-      });
-      notifications.add(`Added ${product.itemName} to cart`);
-    } catch (err) {
-      console.error('Error adding to cart:', err);
-      notifications.add('Error adding item to cart. Please try again.', 'error');
-    }
-  };
-
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -254,52 +206,44 @@
     }
   };
 
-  // Modify the getCategoryItems function to handle limits
-  const getCategoryItems = (categoryName: string | null, limit?: number): Item[] => {
-    if (!categoryName) return [];
-    const items = filteredItems.filter(item => item.category.startsWith(categoryName));
-    return limit ? items.slice(0, limit) : items;
-  };
-
-  // Helper function for non-null category names with limit
-  const getCategoryItemsByName = (categoryName: string, limit?: number): Item[] => {
-    const items = filteredItems.filter(item => item.category.startsWith(categoryName));
-    return limit ? items.slice(0, limit) : items;
-  };
-
   // Function to toggle category expansion
   const toggleCategory = (categoryName: string) => {
-    if (expandedCategories.has(categoryName)) {
-      expandedCategories.delete(categoryName);
+    const newExpandedCategories = new Set(expandedCategories);
+    if (newExpandedCategories.has(categoryName)) {
+      newExpandedCategories.delete(categoryName);
     } else {
-      expandedCategories.add(categoryName);
+      newExpandedCategories.add(categoryName);
     }
-    expandedCategories = expandedCategories; // Trigger reactivity
+    expandedCategories = newExpandedCategories;
   };
+
+  // Function to get items for a category with limit
+  function getCategoryItems(categoryName: string | null, limit?: number): Item[] {
+    if (!categoryName) return [];
+    const items = categoryItems;
+    return limit ? items.slice(0, limit) : items;
+  }
+
+  // Helper function for non-null category names with limit
+  function getCategoryItemsByName(categoryName: string, limit?: number): Item[] {
+    const items = categoryItemsByName[categoryName] || [];
+    return limit ? items.slice(0, limit) : items;
+  }
+
+  // Helper function to get items for a category safely
+  function getItemsForCategory(categoryName: string | null, limit?: number): Item[] {
+    if (!categoryName) return [];
+    return getCategoryItemsByName(categoryName, limit);
+  }
 </script>
 
 <svelte:head>
   <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
 </svelte:head>
 
-{#if loading}
-  <LoadingSpinner message="Loading products and categories..." fullScreen={true} color="orange" />
-{:else if $error}
-  <div class="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div class="text-center p-8">
-      <span class="material-symbols-outlined text-5xl text-red-500 mb-4">error</span>
-      <h1 class="text-2xl font-semibold text-gray-700 mb-2">Error</h1>
-      <p class="text-gray-500 mb-6">{$error}</p>
-      <button
-        on:click={() => window.location.reload()}
-        class="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-200"
-      >
-        <span class="material-symbols-outlined mr-2">refresh</span>
-        Try Again
-      </button>
-    </div>
-  </div>
-{:else if !user}
+{#if $globalAuthStore.isLoading}
+  <LoadingSpinner message="Checking authentication..." fullScreen={true} color="orange" />
+{:else if !$globalAuthStore.isAuthenticated}
   <div class="min-h-screen bg-gray-50 flex items-center justify-center">
     <div class="text-center p-8">
       <span class="material-symbols-outlined text-5xl text-gray-400 mb-4">lock</span>
@@ -309,6 +253,23 @@
         <span class="material-symbols-outlined mr-2">login</span>
         Log In
       </a>
+    </div>
+  </div>
+{:else if isLoading}
+  <LoadingSpinner message="Loading products and categories..." fullScreen={true} color="orange" />
+{:else if $errorStore}
+  <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div class="text-center p-8">
+      <span class="material-symbols-outlined text-5xl text-red-500 mb-4">error</span>
+      <h1 class="text-2xl font-semibold text-gray-700 mb-2">Error</h1>
+      <p class="text-gray-500 mb-6">{$errorStore}</p>
+      <button
+        on:click={() => window.location.reload()}
+        class="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-200"
+      >
+        <span class="material-symbols-outlined mr-2">refresh</span>
+        Try Again
+      </button>
     </div>
   </div>
 {:else}
@@ -439,12 +400,12 @@
               
               <!-- Vertical grid layout for selected category -->
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {#each getCategoryItems(selectedCategory, expandedCategories.has(selectedCategory || '') ? undefined : 20) as item}
+                {#each categoryItems as item (item.id)}
                   <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 flex flex-col">
                     <!-- Product Image -->
                     <div class="relative h-40 w-full overflow-hidden bg-gray-100">
                       <button
-                        on:click={() => goto(`/product/${item.id}`)}
+                        on:click={() => goto(`/product/${item.itemId}`)}
                         class="w-full h-full p-0 border-none bg-transparent cursor-pointer"
                       >
                         <img
@@ -470,11 +431,11 @@
                           {formatPrice(item.price)}
                         </span>
                         <button
-                          on:click={() => goto(`/product/${item.id}`)}
-                          class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+                          on:click={() => goto(`/product/${item.itemId}`)}
+                          class="inline-flex items-center px-2 py-1 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
                         >
                           <span class="material-symbols-outlined text-sm mr-0.5">visibility</span>
-                          View
+                          View Details
                         </button>
                       </div>
                     </div>
@@ -519,12 +480,12 @@
                 <!-- Horizontal scroll layout for default view -->
                 <div class="overflow-x-auto pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
                   <div class="flex gap-3 min-w-max">
-                    {#each getCategoryItemsByName(category.name, expandedCategories.has(category.name) ? undefined : 2) as item}
+                    {#each getCategoryItemsByName(category.name, expandedCategories.has(category.name) ? undefined : 2) as item (item.id)}
                       <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0">
                         <!-- Product Image -->
                         <div class="relative h-32 w-full overflow-hidden bg-gray-100">
                           <button
-                            on:click={() => goto(`/product/${item.id}`)}
+                            on:click={() => goto(`/product/${item.itemId}`)}
                             class="w-full h-full p-0 border-none bg-transparent cursor-pointer"
                           >
                             <img
@@ -550,11 +511,11 @@
                               {formatPrice(item.price)}
                             </span>
                             <button
-                              on:click={() => goto(`/product/${item.id}`)}
-                              class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+                              on:click={() => goto(`/product/${item.itemId}`)}
+                              class="inline-flex items-center px-2 py-1 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
                             >
                               <span class="material-symbols-outlined text-sm mr-0.5">visibility</span>
-                              View
+                              View Details
                             </button>
                           </div>
                         </div>
@@ -583,7 +544,7 @@
         {/if}
 
         <!-- Empty State -->
-        {#if filteredItems.length === 0}
+        {#if !isLoading && filteredItems.length === 0}
           <div class="text-center py-8">
             <span class="material-symbols-outlined text-3xl text-gray-400 mb-2">search_off</span>
             <h3 class="text-base font-medium text-gray-900 mb-1">No products found</h3>

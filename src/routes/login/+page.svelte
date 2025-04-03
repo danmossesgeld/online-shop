@@ -2,6 +2,9 @@
   import { login, signup } from '$lib/auth';
   import { writable } from 'svelte/store';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+  import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
+  import { authStore } from '$lib/store/auth';
   
   let email = '';
   let password = '';
@@ -15,6 +18,13 @@
   let isLoading = false;
   let showPassword = false;
   let formErrors: Record<string, string> = {};
+  
+  onMount(() => {
+    // If user is already authenticated, redirect to mainpage
+    if ($authStore.isAuthenticated) {
+      goto('/mainpage');
+    }
+  });
   
   const validateForm = () => {
     formErrors = {};
@@ -50,6 +60,7 @@
       
       if (isSignUp) {
         await signup(email, password, {
+          email,
           firstName,
           lastName,
           midName,
@@ -61,7 +72,7 @@
         await login(email, password);
       }
       
-      window.location.href = '/mainpage';
+      goto('/mainpage');
     } catch (err) {
       if (err instanceof Error) {
         error.set(err.message);

@@ -30,6 +30,18 @@
     return {
       subscribe,
       add: (message: string, type: NotificationType = 'success', duration = 3000) => {
+        // Show notifications related to cart, payment, checkout, item/user updates, and Firestore operations
+        const allowedKeywords = [
+          'cart', 'payment', 'checkout', 'order', 'purchase', 'transaction',
+          'saved', 'updated', 'modified', 'changed', 'edited', 'deleted',
+          'profile', 'item', 'product', 'category', 'user', 'details'
+        ];
+        const isAllowed = allowedKeywords.some(keyword => 
+          message.toLowerCase().includes(keyword)
+        );
+
+        if (!isAllowed) return;
+
         const id = generateId();
         const notification: Notification = { id, message, type, duration };
         

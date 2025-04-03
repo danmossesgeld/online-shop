@@ -6,6 +6,7 @@
   import { db, storage } from '$lib/firebase';
   import FireTable from '$lib/components/FireTable.svelte';
   import { notifications } from '$lib/components/Notification.svelte';
+  import { itemsStore, fetchItems } from '$lib/store/items';
 
   interface Item {
     id: string;
@@ -76,6 +77,8 @@
         createdAt: doc.data().createdAt?.toDate() || new Date()
       })) as Item[];
       loading = false;
+      // Update the store with the latest items
+      itemsStore.set(items);
     });
 
     return () => unsubscribe();
@@ -100,6 +103,8 @@
       // Delete the document from Firestore
       await deleteDoc(doc(db, 'items', id));
       notifications.add('Item deleted successfully', 'success');
+      // Refresh items in the store
+      await fetchItems();
     } catch (error) {
       console.error('Error deleting item:', error);
       notifications.add('Failed to delete item', 'error');

@@ -477,6 +477,13 @@
   resolved "https://registry.npmjs.org/@firebase/webchannel-wrapper/-/webchannel-wrapper-1.0.3.tgz"
   integrity sha512-2xCRM9q9FlzGZCdgDMJwc0gyUkWFtkosy7Xxr6sFgQwn+wMNIWd7xIvYNauU1r64B5L5rsGKy/n9TKJ0aAFeqQ==
 
+"@google-pay/button-element@^3.1.0":
+  version "3.1.0"
+  resolved "https://registry.npmjs.org/@google-pay/button-element/-/button-element-3.1.0.tgz"
+  integrity sha512-Utw3ZqsdW3Rz1Rf/4OMlENkuGYJps85HjDS9D5aLeOom9siGOaWYnABQy5AtSAInQvmd1Mx/tPITd0jkGU/SBA==
+  dependencies:
+    "@types/googlepay" "^0.7.0"
+
 "@grpc/grpc-js@~1.9.0":
   version "1.9.15"
   resolved "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.9.15.tgz"
@@ -723,6 +730,11 @@
   version "1.0.6"
   resolved "https://registry.npmjs.org/@types/estree/-/estree-1.0.6.tgz"
   integrity sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==
+
+"@types/googlepay@^0.7.0":
+  version "0.7.6"
+  resolved "https://registry.npmjs.org/@types/googlepay/-/googlepay-0.7.6.tgz"
+  integrity sha512-5003wG+qvf4Ktf1hC9IJuRakNzQov00+Xf09pAWGJLpdOjUrq0SSLCpXX7pwSeTG9r5hrdzq1iFyZcW7WVyr4g==
 
 "@types/json-schema@^7.0.15":
   version "7.0.15"

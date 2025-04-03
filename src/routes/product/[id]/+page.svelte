@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getFirestore, doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+  import { getFirestore, doc, getDoc, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
   import { cart, addToCart, cartCount } from '$lib/store/cart';
   import { auth } from '$lib/firebase';
   import { signOut, type User } from 'firebase/auth';
@@ -11,6 +11,8 @@
   import { writable } from 'svelte/store';
   import { notifications } from '$lib/components/Notification.svelte';
   import { goto } from '$app/navigation';
+  import { itemsStore, fetchItems } from '$lib/store/items';
+  import type { Item } from '$lib/store/items';
 
   interface VariationOption {
     value: string;
@@ -24,27 +26,9 @@
     combinations: Record<string, string>;
   }
 
-  interface Product {
-    id: string;
-    itemName: string;
-    description: string;
-    price: number;
-    thumbnail: string;
-    images?: string[];
-    variations?: {
-      Color?: string[];
-      Memory?: string[];
-      Storage?: string[];
-    };
-    productVariations: ProductVariation[];
-    specs?: string[];
-    detailedInfo?: string;
-    category: string;
-  }
-
   let loading = true;
-  let product: Product | null = null;
-  let error = '';
+  let product: Item | null = null;
+  let error: string | null = null;
   let user: User | null = null;
   let selectedImage = '';
   let selectedVariations: Record<string, string> = {};
@@ -53,7 +37,7 @@
   let showToast = false;
   let toastMessage = '';
   let showDetailedInfo = false;
-  let similarItems: Product[] = [];
+  let similarItems: Item[] = [];
 
   const db = getFirestore();
   const errorMessage = writable('');
@@ -62,6 +46,9 @@
   auth.onAuthStateChanged((newUser) => {
     user = newUser;
   });
+
+  // Reactive product ID from URL
+  $: productId = $page.params.id;
 
   // Function to fetch similar items
   const fetchSimilarItems = async (category: string, currentProductId: string) => {
@@ -76,7 +63,7 @@
         .map(doc => ({
           id: doc.id,
           ...doc.data()
-        } as Product))
+        } as Item))
         .filter(item => item.id !== currentProductId)
         .slice(0, 2); // Only get 1 item temporarily
     } catch (err) {
@@ -85,27 +72,35 @@
   };
 
   // Function to fetch product data
-  const fetchProductData = async (productId: string) => {
+  const fetchProductData = async () => {
     try {
       loading = true;
-      const docRef = doc(db, 'items', productId);
-      const docSnap = await getDoc(docRef);
+      error = null;
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        product = {
-          id: productId,
-          itemName: data.itemName || '',
-          description: data.description || '',
-          price: data.price || 0,
-          thumbnail: data.thumbnail || '',
-          images: Array.isArray(data.images) ? data.images : [],
-          variations: data.variations || {},
-          productVariations: Array.isArray(data.productVariations) ? data.productVariations : [],
-          specs: Array.isArray(data.specs) ? data.specs : [],
-          detailedInfo: data.detailedInfo,
-          category: data.category || ''
-        };
+      // Set up real-time listener for product data
+      const unsubscribe = onSnapshot(doc(db, 'items', productId), (productDoc) => {
+        if (!productDoc.exists()) {
+          error = 'Product not found';
+          notifications.add('Product not found', 'error');
+          return;
+        }
+
+        product = productDoc.data() as Item;
+        
+        // Fetch similar items from the same category
+        if (product.category) {
+          const similarQuery = query(
+            collection(db, 'items'),
+            where('category', '==', product.category)
+          );
+          
+          getDocs(similarQuery).then(similarSnapshot => {
+            similarItems = similarSnapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() } as Item))
+              .filter(item => item.id !== productId)
+              .slice(0, 4); // Limit to 4 similar items
+          });
+        }
 
         selectedImage = product.thumbnail;
 
@@ -118,35 +113,33 @@
 
         // Fetch similar items after getting the product
         if (product.category) {
-          await fetchSimilarItems(product.category, productId);
+          fetchSimilarItems(product.category, productId);
         }
-      } else {
-        error = 'Product not found';
-        notifications.add('Product not found', 'error');
-      }
+
+        loading = false;
+      }, (err) => {
+        console.error('Error fetching product:', err);
+        error = 'Failed to load product. Please try again later.';
+        notifications.add('Error loading product details', 'error');
+        loading = false;
+      });
+
+      // Cleanup subscription when component is destroyed
+      return () => unsubscribe();
     } catch (err) {
-      console.error('Error fetching product:', err);
+      console.error('Error setting up product listener:', err);
       error = 'Failed to load product. Please try again later.';
       notifications.add('Error loading product details', 'error');
-    } finally {
       loading = false;
     }
   };
 
-  // Watch for route changes
+  // Reactive statement to fetch product data when ID changes
   $: {
-    const productId = $page.params.id;
     if (productId) {
-      fetchProductData(productId);
+      fetchProductData();
     }
   }
-
-  onMount(() => {
-    const productId = $page.params.id;
-    if (productId) {
-      fetchProductData(productId);
-    }
-  });
 
   $: if (product?.variations) {
     // Check if all variations are selected
@@ -174,7 +167,7 @@
   };
 
   const handleAddToCart = () => {
-    if (!product) return;
+    if (!product || !productId) return;
 
     // Check if all variations are selected
     const missingVariations = Object.keys(product.variations || {})
@@ -187,12 +180,10 @@
 
     // Add to cart with variation details
     const cartItem = {
-      id: product.id,
+      id: productId, // Use the URL parameter ID which is the Firestore document ID
       name: product.itemName,
       price: selectedProductVariation?.price || product.price,
       thumbnail: product.thumbnail,
-      variationId: selectedProductVariation?.id,
-      variationName: selectedProductVariation?.name,
       selectedVariations: { ...selectedVariations }  // Include all selected variations
     };
 
@@ -338,7 +329,7 @@
                       class="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-200"
                     >
                       <option value="">Select {variationType}</option>
-                      {#each options as option}
+                      {#each options || [] as option}
                         <option value={option}>{option}</option>
                       {/each}
                     </select>
@@ -420,12 +411,11 @@
                       </a>
                     {/each}
                     <!-- Show More Button -->
-                    <a 
-                      href="/mainpage"
-                      on:click|preventDefault={() => {
+                    <button 
+                      on:click={() => {
                         if (product) {
                           const mainCategory = product.category.split(' > ')[0];
-                          goto(`/mainpage?category=${encodeURIComponent(mainCategory)}`, { replaceState: true });
+                          goto(`/mainpage?category=${encodeURIComponent(mainCategory)}`);
                         }
                       }}
                       class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0 flex items-center justify-center"
@@ -435,7 +425,7 @@
                         <p class="text-sm font-medium text-gray-900">Show More</p>
                         <p class="text-xs text-gray-500 mt-1">View all {product?.category.split(' > ')[0]} items</p>
                       </div>
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>

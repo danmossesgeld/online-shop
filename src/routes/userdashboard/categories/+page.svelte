@@ -5,6 +5,7 @@
   import { getUserType } from '$lib/auth';
   import { notifications } from '$lib/components/Notification.svelte';
   import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, getDoc, type DocumentData } from 'firebase/firestore';
+  import { categoriesStore, fetchCategories } from '$lib/store/items';
 
   const db = getFirestore();
   interface CategoryData {
@@ -175,6 +176,7 @@
       await setDoc(categoryRef, editingCategory);
       
       await loadCategories();
+      await fetchCategories();
       hasUnsavedChanges = false;
       originalCategory = { ...editingCategory };
       
@@ -198,6 +200,7 @@
     try {
       await deleteDoc(doc(db, 'itemcategory', category));
       await loadCategories();
+      await fetchCategories();
       editingCategory = null;
       originalCategory = null;
       hasUnsavedChanges = false;
@@ -234,8 +237,9 @@
       <!-- Category Selection/Creation -->
       <div class="flex gap-4 items-start">
         <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Select Category to Edit</label>
+          <label for="category-select" class="block text-sm font-medium text-gray-700 mb-1">Select Category to Edit</label>
           <select
+            id="category-select"
             bind:value={selectedMainCategory}
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
           >
@@ -246,9 +250,10 @@
           </select>
         </div>
         <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Or Create New Category</label>
+          <label for="new-category" class="block text-sm font-medium text-gray-700 mb-1">Or Create New Category</label>
           <div class="flex gap-2">
             <input
+              id="new-category"
               type="text"
               bind:value={newMainCategory}
               placeholder="Enter category name"
@@ -266,9 +271,10 @@
       {#if editingCategory}
         <!-- Icon Input -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Category Icon</label>
+          <label for="category-icon" class="block text-sm font-medium text-gray-700 mb-1">Category Icon</label>
           <div class="flex gap-2 items-center">
             <input
+              id="category-icon"
               type="text"
               bind:value={newIconInput}
               placeholder="Paste icon tag (e.g., <iconify-icon icon='mdi:car'></iconify-icon>)"
@@ -287,11 +293,12 @@
           <div class="space-y-4">
             <!-- Add Group -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
+              <label for="new-group" class="block text-sm font-medium text-gray-700 mb-1">
                 Add Group to {selectedMainCategory || newMainCategory}
               </label>
               <div class="flex gap-2">
                 <input
+                  id="new-group"
                   type="text"
                   bind:value={newGroup}
                   placeholder="Enter group name"
