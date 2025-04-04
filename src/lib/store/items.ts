@@ -234,6 +234,16 @@ export async function deleteCategory(category: string) {
   }
 }
 
+// Function to clear all stores
+export function clearStores() {
+  _itemsStore.set([]);
+  _categoriesStore.set([]);
+  _loadingStore.set(true);
+  _errorStore.set(null);
+  stopItemsListener();
+  stopCategoriesListener();
+}
+
 // Function to initialize stores after authentication
 export async function initializeStores() {
   try {

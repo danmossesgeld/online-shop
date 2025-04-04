@@ -7,6 +7,9 @@
   import Navbar from '$lib/components/Navbar.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import { notifications } from '$lib/components/Notification.svelte';
+  import { clearStores } from '$lib/store/items';
+  import { clearCart } from '$lib/store/cart';
+  import { logout } from '$lib/auth';
 
   // State management
   let user: any = null;
@@ -108,7 +111,14 @@
     if (isMobileView) {
       showSidebar = false;
     }
-    auth.signOut();
+    
+    // Use centralized logout function
+    logout().then(() => {
+      window.location.href = '/login';
+    }).catch((error) => {
+      console.error('Error during logout:', error);
+      notifications.add('Error logging out', 'error');
+    });
   }
 
   const resetHome = async (): Promise<void> => {
@@ -131,7 +141,16 @@
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
-        goto('/login');
+        // Clear theme
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('theme', 'light');
+        
+        // Clear stores
+        clearStores();
+        clearCart();
+        
+        // Redirect to login
+        window.location.href = '/login';
         return;
       }
 
@@ -161,7 +180,16 @@
         }
       } catch (error) {
         console.error('Error loading user type:', error);
-        goto('/login');
+        // Clear theme
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('theme', 'light');
+        
+        // Clear stores
+        clearStores();
+        clearCart();
+        
+        // Redirect to login
+        window.location.href = '/login';
       } finally {
         isLoading = false;
       }
@@ -178,28 +206,28 @@
 {#if isLoading}
   <LoadingSpinner message="Checking authentication..." fullScreen={true} color="orange" />
 {:else}
-  <div class="min-h-screen bg-gray-50 relative max-w-[100vw] overflow-x-hidden">
+  <div class="min-h-screen bg-base-100 relative max-w-[100vw] overflow-x-hidden">
     <!-- Portrait Mode Warning -->
-    <div class="lg:hidden fixed inset-0 bg-white z-[60] portrait:flex hidden items-center justify-center flex-col p-8" style="touch-action: none;">
-      <span class="material-symbols-outlined text-6xl text-orange-500 animate-bounce mb-4">screen_rotation</span>
-      <h2 class="text-xl font-semibold text-gray-800 mb-2 text-center">Please Rotate Your Device</h2>
-      <p class="text-gray-600 text-center">This dashboard works best in landscape mode</p>
+    <div class="lg:hidden fixed inset-0 bg-base-100 z-[60] portrait:flex hidden items-center justify-center flex-col p-8" style="touch-action: none;">
+      <span class="material-symbols-outlined text-6xl text-primary animate-bounce mb-4">screen_rotation</span>
+      <h2 class="text-xl font-semibold text-base-content mb-2 text-center">Please Rotate Your Device</h2>
+      <p class="text-base-content/60 text-center">This dashboard works best in landscape mode</p>
     </div>
 
     <div class="flex h-screen overflow-hidden">
       <!-- Sidebar -->
-      <aside class="fixed inset-y-0 left-0 bg-white border-r border-gray-100 shadow-sm z-50 transition-all duration-300"
+      <aside class="fixed inset-y-0 left-0 bg-base-100 border-r border-base-300 shadow-sm z-50 transition-all duration-300"
         class:w-72={showSidebar}
         class:w-16={!showSidebar}
       >
         <div class="flex flex-col h-full relative">
           <!-- Toggle Sidebar Button -->
           <button
-            class="absolute -right-4 top-1/2 -translate-y-1/2 bg-white border border-gray-200 rounded-full p-1.5 shadow-lg hover:shadow-xl hover:bg-orange-50 hover:border-orange-200 transition-all duration-300 group z-50"
+            class="absolute -right-4 top-1/2 -translate-y-1/2 bg-base-100 border border-base-300 rounded-full p-1.5 shadow-lg hover:shadow-xl hover:bg-primary/10 hover:border-primary transition-all duration-300 group z-50"
             on:click={() => showSidebar = !showSidebar}
             aria-label={showSidebar ? 'Hide Sidebar' : 'Show Sidebar'}
           >
-            <span class="material-symbols-outlined text-sm text-gray-600 group-hover:text-orange-600 transition-colors duration-300" style="font-variation-settings: 'FILL' 1">
+            <span class="material-symbols-outlined text-sm text-base-content group-hover:text-primary transition-colors duration-300" style="font-variation-settings: 'FILL' 1">
               {showSidebar ? 'chevron_left' : 'chevron_right'}
             </span>
           </button>
@@ -207,29 +235,29 @@
           <!-- Logo -->
           <button 
             on:click={resetHome}
-            class="flex items-center justify-center border-b border-gray-100 text-orange-500 group relative w-full hover:bg-orange-50/30 transition-all duration-300"
+            class="flex items-center justify-center border-b border-base-300 text-primary group relative w-full hover:bg-primary/10 transition-all duration-300"
             class:h-16={showSidebar}
             class:h-12={!showSidebar}
             disabled={isRefreshing}
           >
             {#if isRefreshing}
-              <span class="material-symbols-outlined animate-spin text-orange-500">sync</span>
+              <span class="material-symbols-outlined animate-spin text-primary">sync</span>
             {:else}
               <div class="flex items-center gap-2">
                 {#if showSidebar}
                 <div class="relative flex items-center justify-center">
-                  <iconify-icon icon="ri:store-2-line" width="30" height="30" class="text-orange-600"></iconify-icon>
+                  <iconify-icon icon="ri:store-2-line" width="30" height="30" class="text-primary"></iconify-icon>
                 </div>
                 <div class="relative overflow-hidden">
                   <span class="relative inline-flex transition-transform duration-300 ease-out">
-                    <span class="text-orange-600/90 text-base font-extrabold">DOKI</span>
-                    <span class="text-orange-500 text-base font-black">SHOPPE</span>
+                    <span class="text-primary/90 text-base font-extrabold">DOKI</span>
+                    <span class="text-primary text-base font-black">SHOPPE</span>
                   </span>
-                  <div class="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-orange-500/0 via-orange-500 to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div class="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-primary/0 via-primary to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
                 {:else}
                 <div class="relative flex items-center justify-center">
-                  <iconify-icon icon="ri:store-2-line" width="27" height="27" class="text-orange-600"></iconify-icon>
+                  <iconify-icon icon="ri:store-2-line" width="27" height="27" class="text-primary"></iconify-icon>
                 </div>
                 {/if}
               </div>
@@ -238,14 +266,14 @@
 
           <!-- User Info -->
           {#if showSidebar}
-          <div class="p-3 border-b border-gray-100">
+          <div class="p-3 border-b border-base-300">
             <div class="flex items-center space-x-3">
-              <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                <span class="material-symbols-outlined text-lg text-orange-600">account_circle</span>
+              <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-lg text-primary">account_circle</span>
               </div>
               <div class="overflow-hidden">
-                <p class="text-xs font-semibold text-gray-900 truncate">{user?.email}</p>
-                <p class="text-xs text-gray-500 capitalize">{userType}</p>
+                <p class="text-xs font-semibold text-base-content truncate">{user?.email}</p>
+                <p class="text-xs text-base-content/60 capitalize">{userType}</p>
               </div>
             </div>
           </div>
@@ -256,7 +284,7 @@
             {#each navItems.filter(item => userType === 'admin' || !item.adminOnly) as item}
               <a
                 href={item.path}
-                class="flex items-center text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-all duration-200 group relative"
+                class="flex items-center text-sm text-base-content/60 hover:bg-primary/10 hover:text-primary transition-all duration-200 group relative"
                 class:px-4={showSidebar}
                 class:px-2={!showSidebar}
                 class:py-2={showSidebar}
@@ -269,17 +297,17 @@
                   {item.label}
                 {/if}
                 {#if activeTab === item.path}
-                  <div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-orange-500 rounded-r-full"></div>
+                  <div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"></div>
                 {/if}
               </a>
             {/each}
           </nav>
 
           <!-- Logout Button -->
-          <div class="p-2 border-t border-gray-100">
+          <div class="p-2 border-t border-base-300">
             <button
               on:click={handleLogout}
-              class="w-full flex items-center justify-center text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+              class="w-full flex items-center justify-center text-sm font-medium text-base-100 bg-error hover:bg-error/90 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
               class:px-4={showSidebar}
               class:px-1={!showSidebar}
               class:py-2={showSidebar}
@@ -297,7 +325,7 @@
 
       <!-- Main Content -->
       <main 
-        class="flex-1 h-screen overflow-y-auto overflow-x-hidden transition-all duration-300 bg-gray-50 overscroll-none"
+        class="flex-1 h-screen overflow-y-auto overflow-x-hidden transition-all duration-300 bg-base-100 overscroll-none"
         class:ml-72={showSidebar}
         class:ml-16={!showSidebar}
         style="height: calc(100vh); -webkit-overflow-scrolling: touch;"

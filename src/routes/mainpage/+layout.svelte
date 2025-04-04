@@ -11,7 +11,8 @@
         startItemsListener, 
         stopItemsListener,
         startCategoriesListener,
-        stopCategoriesListener 
+        stopCategoriesListener,
+        clearStores
     } from '$lib/store/items';
 
     let mounted = false;
@@ -33,8 +34,14 @@
             // If authenticated, load data
             if ($globalAuthStore.isAuthenticated) {
                 loadData();
+            } else {
+                // If not authenticated, clear stores and stop listeners
+                clearStores();
+                stopItemsListener();
+                stopCategoriesListener();
+                // Redirect to login
+                window.location.href = '/login';
             }
-            // No need to redirect here, that's handled by AuthChecker
         }
     }
 

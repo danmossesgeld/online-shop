@@ -225,11 +225,11 @@
 
 <div class="space-y-6 max-w-5xl mx-auto">
   <!-- Category Management -->
-  <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+  <div class="card bg-base-100 shadow-sm">
     <!-- Header -->
-    <div class="border-b border-gray-200 p-4">
-      <h3 class="text-lg font-semibold text-gray-900">Category Management</h3>
-      <p class="mt-1 text-sm text-gray-500">Manage your store categories, groups, and subcategories</p>
+    <div class="border-b border-base-300 p-4">
+      <h3 class="text-lg font-semibold text-base-content">Category Management</h3>
+      <p class="mt-1 text-sm text-base-content/60">Manage your store categories, groups, and subcategories</p>
     </div>
 
     <!-- Add/Edit Category Section -->
@@ -237,11 +237,11 @@
       <!-- Category Selection/Creation -->
       <div class="flex gap-4 items-start">
         <div class="flex-1">
-          <label for="category-select" class="block text-sm font-medium text-gray-700 mb-1">Select Category to Edit</label>
+          <label for="category-select" class="block text-sm font-medium text-base-content mb-1">Select Category to Edit</label>
           <select
             id="category-select"
             bind:value={selectedMainCategory}
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+            class="select select-bordered w-full"
           >
             <option value="">Select Category</option>
             {#each Object.keys(categories) as category}
@@ -250,14 +250,14 @@
           </select>
         </div>
         <div class="flex-1">
-          <label for="new-category" class="block text-sm font-medium text-gray-700 mb-1">Or Create New Category</label>
+          <label for="new-category" class="block text-sm font-medium text-base-content mb-1">Or Create New Category</label>
           <div class="flex gap-2">
             <input
               id="new-category"
               type="text"
               bind:value={newMainCategory}
               placeholder="Enter category name"
-              class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+              class="input input-bordered w-full"
               on:input={() => {
                 if (newMainCategory && !editingCategory) {
                   initNewCategory();
@@ -271,29 +271,29 @@
       {#if editingCategory}
         <!-- Icon Input -->
         <div>
-          <label for="category-icon" class="block text-sm font-medium text-gray-700 mb-1">Category Icon</label>
+          <label for="category-icon" class="block text-sm font-medium text-base-content mb-1">Category Icon</label>
           <div class="flex gap-2 items-center">
             <input
               id="category-icon"
               type="text"
               bind:value={newIconInput}
               placeholder="Paste icon tag (e.g., <iconify-icon icon='mdi:car'></iconify-icon>)"
-              class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+              class="input input-bordered w-full"
               on:input={() => updateIcon(newIconInput)}
             />
           </div>
           <div class="mt-2 flex items-center gap-2">
-            <span class="text-sm text-gray-500">Icon Preview:</span>
+            <span class="text-sm text-base-content/60">Icon Preview:</span>
             {@html editingCategory.icon}
           </div>
         </div>
 
         <!-- Groups and Subcategories -->
-        <div class="border-t border-gray-200 pt-4 mt-4">
+        <div class="border-t border-base-300 pt-4 mt-4">
           <div class="space-y-4">
             <!-- Add Group -->
             <div>
-              <label for="new-group" class="block text-sm font-medium text-gray-700 mb-1">
+              <label for="new-group" class="block text-sm font-medium text-base-content mb-1">
                 Add Group to {selectedMainCategory || newMainCategory}
               </label>
               <div class="flex gap-2">
@@ -302,11 +302,11 @@
                   type="text"
                   bind:value={newGroup}
                   placeholder="Enter group name"
-                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  class="input input-bordered flex-1"
                 />
                 <button
                   on:click={addGroup}
-                  class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  class="btn btn-primary"
                 >
                   Add Group
                 </button>
@@ -317,14 +317,14 @@
             <div class="space-y-4">
               {#each Object.entries(editingCategory) as [key, value]}
                 {#if key !== 'icon' && Array.isArray(value)}
-                  <div class="bg-gray-50 rounded-lg p-4">
+                  <div class="bg-base-200 rounded-lg p-4">
                     <div class="flex items-center justify-between mb-3">
-                      <h5 class="text-md font-medium text-gray-700">{key}</h5>
+                      <h5 class="text-md font-medium text-base-content">{key}</h5>
                       <button
                         on:click={() => deleteGroup(key)}
-                        class="p-1 text-red-500 hover:text-red-600 focus:outline-none"
+                        class="btn btn-ghost btn-sm text-error"
                       >
-                        <span class="material-symbols-outlined">delete</span>
+                        <iconify-icon icon="material-symbols:delete" width="20" height="20" class="text-error/70 hover:text-error"></iconify-icon>
                       </button>
                     </div>
 
@@ -335,11 +335,11 @@
                           type="text"
                           bind:value={newSubcategory}
                           placeholder="Enter subcategory name"
-                          class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          class="input input-bordered flex-1"
                         />
                         <button
                           on:click={() => addSubcategory(key)}
-                          class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          class="btn btn-primary"
                         >
                           Add Subcategory
                         </button>
@@ -350,19 +350,19 @@
                     {#if value.length > 0}
                       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                         {#each value as subcategory}
-                          <div class="flex items-center justify-between bg-white rounded-md px-3 py-1.5 shadow-sm">
-                            <span class="text-sm text-gray-600">{subcategory}</span>
+                          <div class="flex items-center justify-between bg-base-100 rounded-md px-3 py-1.5 shadow-sm">
+                            <span class="text-sm text-base-content/70">{subcategory}</span>
                             <button
                               on:click={() => deleteSubcategory(key, subcategory)}
-                              class="p-1 text-red-500 hover:text-red-600 focus:outline-none"
+                              class="btn btn-ghost btn-xs text-error"
                             >
-                              <span class="material-symbols-outlined text-sm">delete</span>
+                              <iconify-icon icon="material-symbols:delete" width="16" height="16" class="text-error/70 hover:text-error"></iconify-icon>
                             </button>
                           </div>
                         {/each}
                       </div>
                     {:else}
-                      <p class="text-sm text-gray-500 italic">No subcategories yet</p>
+                      <p class="text-sm text-base-content/50 italic">No subcategories yet</p>
                     {/if}
                   </div>
                 {/if}
@@ -372,24 +372,24 @@
         </div>
 
         <!-- Action Buttons -->
-        <div class="border-t border-gray-200 pt-4 mt-4 flex justify-between">
+        <div class="border-t border-base-300 pt-4 mt-4 flex justify-between">
           <div class="flex items-center gap-2">
             <button
               on:click={saveChanges}
               disabled={!hasUnsavedChanges}
-              class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Save Changes
             </button>
             {#if hasUnsavedChanges}
-              <span class="text-sm text-orange-500">You have unsaved changes</span>
+              <span class="text-sm text-warning">You have unsaved changes</span>
             {/if}
           </div>
           
           {#if selectedMainCategory}
             <button
               on:click={() => deleteMainCategory(selectedMainCategory)}
-              class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+              class="btn btn-error"
             >
               Delete Category
             </button>
@@ -400,39 +400,41 @@
   </div>
 
   <!-- Categories Overview -->
-  <div class="bg-white rounded-lg shadow-sm p-4">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Categories Overview</h3>
-    {#if loading}
-      <div class="text-center py-4">
-        <span class="material-symbols-outlined text-4xl text-orange-500 animate-spin">sync</span>
-      </div>
-    {:else}
-      <div class="space-y-6">
-        {#each Object.entries(categories) as [category, groups]}
-          <div class="border-b border-gray-200 pb-4 last:border-b-0">
-            <div class="flex items-center gap-2 mb-2">
-              {@html categoryIcons[category]}
-              <h4 class="text-lg font-medium text-gray-900">{category}</h4>
-            </div>
-            
-            <div class="ml-8 space-y-3">
-              {#each Object.entries(groups) as [group, subcategories]}
-                <div class="border-l-2 border-gray-200 pl-4">
-                  <h5 class="text-md font-medium text-gray-700 mb-2">{group}</h5>
-                  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                    {#each subcategories as subcategory}
-                      <div class="bg-gray-50 rounded-md px-3 py-1.5">
-                        <span class="text-sm text-gray-600">{subcategory}</span>
-                      </div>
-                    {/each}
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h3 class="text-lg font-semibold text-base-content mb-4">Categories Overview</h3>
+      {#if loading}
+        <div class="flex justify-center py-4">
+          <span class="loading loading-spinner loading-lg text-primary"></span>
+        </div>
+      {:else}
+        <div class="space-y-6">
+          {#each Object.entries(categories) as [category, groups]}
+            <div class="border-b border-base-300 pb-4 last:border-b-0">
+              <div class="flex items-center gap-2 mb-2">
+                {@html categoryIcons[category]}
+                <h4 class="text-lg font-medium text-base-content">{category}</h4>
+              </div>
+              
+              <div class="ml-8 space-y-3">
+                {#each Object.entries(groups) as [group, subcategories]}
+                  <div class="border-l-2 border-base-300 pl-4">
+                    <h5 class="text-md font-medium text-base-content/80 mb-2">{group}</h5>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {#each subcategories as subcategory}
+                        <div class="bg-base-200 rounded-md px-3 py-1.5">
+                          <span class="text-sm text-base-content/70">{subcategory}</span>
+                        </div>
+                      {/each}
+                    </div>
                   </div>
-                </div>
-              {/each}
+                {/each}
+              </div>
             </div>
-          </div>
-        {/each}
-      </div>
-    {/if}
+          {/each}
+        </div>
+      {/if}
+    </div>
   </div>
 </div>
 
@@ -440,6 +442,9 @@
   :global(iconify-icon) {
     width: 24px;
     height: 24px;
-    color: #f97316; /* text-orange-500 */
+    color: hsl(var(--p) / 0.7); /* Use primary color with opacity */
+  }
+  :global(iconify-icon:hover) {
+    color: hsl(var(--p)); /* Full opacity on hover */
   }
 </style> 

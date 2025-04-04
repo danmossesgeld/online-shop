@@ -30,16 +30,16 @@
   {#if loading}
     <div class="h-[calc(100vh-10rem)] flex items-center justify-center">
       <div class="text-center">
-        <span class="material-symbols-outlined text-4xl text-orange-500 animate-spin">sync</span>
-        <p class="mt-2 text-gray-500">Loading dashboard...</p>
+        <span class="loading loading-spinner loading-lg text-primary"></span>
+        <p class="mt-2 text-base-content/60">Loading dashboard...</p>
       </div>
     </div>
   {:else}
     <div class="h-[calc(100vh-10rem)] flex flex-col items-center justify-center">
       <div class="text-center">
-        <span class="material-symbols-outlined text-5xl text-orange-500 mb-4">dashboard</span>
-        <h2 class="text-2xl font-semibold text-gray-800 mb-2">Welcome to {userType === 'admin' ? 'Admin' : 'User'} Dashboard</h2>
-        <p class="text-gray-500">Select a section from the sidebar to get started</p>
+        <span class="material-symbols-outlined text-5xl text-primary mb-4">dashboard</span>
+        <h2 class="text-2xl font-semibold text-base-content mb-2">Welcome to {userType === 'admin' ? 'Admin' : 'User'} Dashboard</h2>
+        <p class="text-base-content/60">Select a section from the sidebar to get started</p>
       </div>
     </div>
   {/if}

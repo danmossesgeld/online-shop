@@ -73,9 +73,9 @@
 
   // Define color mapping
   const colorMap: Record<Notification['type'], string> = {
-    success: 'text-green-500',
-    error: 'text-red-500',
-    info: 'text-blue-500'
+    success: 'text-success',
+    error: 'text-error',
+    info: 'text-info'
   };
 </script>
 
@@ -88,7 +88,7 @@
   {#each $notifications as notification (notification.id)}
     <div
       transition:fade={{ duration: 200 }}
-      class="bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-lg px-5 py-3 flex items-center gap-3 min-w-[200px] border border-gray-200 dark:border-gray-700"
+      class="alert bg-base-100/90 backdrop-blur-sm rounded-lg shadow-lg px-5 py-3 flex items-center gap-3 min-w-[200px] border border-base-300"
       role="alert"
       aria-label={`${notification.type} notification`}
     >
@@ -98,7 +98,7 @@
       >
         {iconMap[notification.type]}
       </span>
-      <span class="text-gray-700 dark:text-gray-200">{notification.message}</span>
+      <span class="text-base-content">{notification.message}</span>
     </div>
   {/each}
 </div>

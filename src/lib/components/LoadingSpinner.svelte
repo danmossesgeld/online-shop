@@ -35,14 +35,14 @@
   };
 
   const colorClasses: Record<SpinnerColor, string> = {
-    blue: 'text-blue-500',
-    orange: 'text-orange-500',
-    green: 'text-green-500',
-    red: 'text-red-500',
-    purple: 'text-purple-500',
-    pink: 'text-pink-500',
-    indigo: 'text-indigo-500',
-    gray: 'text-gray-500'
+    blue: 'text-primary',
+    orange: 'text-primary',
+    green: 'text-success',
+    red: 'text-error',
+    purple: 'text-secondary',
+    pink: 'text-accent',
+    indigo: 'text-info',
+    gray: 'text-base-content/60'
   };
 
   // Computed classes
@@ -65,7 +65,7 @@
 
 {#if fullScreen}
   <div 
-    class="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center"
+    class="fixed inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center"
     role="dialog"
     aria-modal="true"
     aria-label="Loading overlay"
@@ -93,7 +93,7 @@
         />
       </svg>
       {#if message}
-        <p class="text-gray-700 font-medium" id={loadingId}>{message}</p>
+        <p class="text-base-content font-medium" id={loadingId}>{message}</p>
       {/if}
     </div>
   </div>
@@ -127,7 +127,7 @@
         />
       </svg>
       {#if message}
-        <p class="text-gray-700 text-sm" id={loadingId}>{message}</p>
+        <p class="text-base-content text-sm" id={loadingId}>{message}</p>
       {/if}
     </div>
   </div>

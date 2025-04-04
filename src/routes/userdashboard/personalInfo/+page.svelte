@@ -52,11 +52,11 @@
 </script>
 
 <div class="max-w-2xl mx-auto">
-  <div class="bg-white rounded-2xl shadow-sm p-8">
+  <div class="card bg-base-100 shadow-sm p-8">
     <div class="flex items-center justify-between mb-8">
-      <h1 class="text-2xl font-bold text-gray-900">Personal Information</h1>
-      <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
-        <span class="material-symbols-outlined text-2xl text-orange-600">person</span>
+      <h1 class="text-2xl font-bold text-base-content">Personal Information</h1>
+      <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-2xl text-primary">person</span>
       </div>
     </div>
 
@@ -66,109 +66,90 @@
       </div>
     {:else}
       <form on:submit|preventDefault={handleSubmit} class="space-y-6">
-        <!-- Name Fields -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label for="firstName" class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-            <div class="relative">
-              <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">person</span>
-              <input
-                type="text"
-                id="firstName"
-                bind:value={userData.firstName}
-                class="w-full pl-12 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
-                placeholder="Enter your first name"
-              />
-            </div>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text text-base-content">First Name</span>
+            </label>
+            <input
+              type="text"
+              bind:value={userData.firstName}
+              class="input input-bordered bg-base-200"
+              required
+            />
           </div>
 
-          <div>
-            <label for="lastName" class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-            <div class="relative">
-              <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">person</span>
-              <input
-                type="text"
-                id="lastName"
-                bind:value={userData.lastName}
-                class="w-full pl-12 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
-                placeholder="Enter your last name"
-              />
-            </div>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text text-base-content">Last Name</span>
+            </label>
+            <input
+              type="text"
+              bind:value={userData.lastName}
+              class="input input-bordered bg-base-200"
+              required
+            />
           </div>
-        </div>
 
-        <!-- Email -->
-        <div>
-          <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">mail</span>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text text-base-content">Email</span>
+            </label>
             <input
               type="email"
-              id="email"
               bind:value={userData.email}
-              class="w-full pl-12 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 bg-gray-50"
-              placeholder="Enter your email address"
+              class="input input-bordered bg-base-200"
+              required
               disabled
             />
           </div>
-        </div>
 
-        <!-- Contact Number -->
-        <div>
-          <label for="contactNumber" class="block text-sm font-medium text-gray-700 mb-2">Contact Number</label>
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">phone</span>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text text-base-content">Contact Number</span>
+            </label>
             <input
               type="tel"
-              id="contactNumber"
               bind:value={userData.contactNumber}
-              class="w-full pl-12 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
-              placeholder="Enter your contact number"
+              class="input input-bordered bg-base-200"
+              required
             />
           </div>
-        </div>
 
-        <!-- Birth Date -->
-        <div>
-          <label for="birthDate" class="block text-sm font-medium text-gray-700 mb-2">Birth Date</label>
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">calendar_today</span>
-            <input
-              type="date"
-              id="birthDate"
-              bind:value={userData.birthDate}
-              class="w-full pl-12 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
-            />
-          </div>
-        </div>
-
-        <!-- Address -->
-        <div>
-          <label for="address" class="block text-sm font-medium text-gray-700 mb-2">Address</label>
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-4 top-4 text-gray-400">location_on</span>
+          <div class="form-control md:col-span-2">
+            <label class="label">
+              <span class="label-text text-base-content">Address</span>
+            </label>
             <textarea
-              id="address"
               bind:value={userData.address}
-              rows="3"
-              class="w-full pl-12 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
-              placeholder="Enter your complete address"
+              class="textarea textarea-bordered bg-base-200"
+              required
             ></textarea>
           </div>
+
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text text-base-content">Birth Date</span>
+            </label>
+            <input
+              type="date"
+              bind:value={userData.birthDate}
+              class="input input-bordered bg-base-200"
+              required
+            />
+          </div>
         </div>
 
-        <!-- Submit Button -->
         <div class="flex justify-end">
           <button
             type="submit"
+            class="btn btn-primary"
             disabled={saving}
-            class="px-6 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all duration-200 font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {#if saving}
-              <Spinner size="sm" />
+              <span class="loading loading-spinner"></span>
               Saving...
             {:else}
-              <span class="material-symbols-outlined">save</span>
               Save Changes
             {/if}
           </button>
