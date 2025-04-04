@@ -234,6 +234,7 @@ function createCart(): CartStore {
         loadCart();
       } else {
         set([]);
+        clearPendingOrderData(); // Clear pending order data when user logs out
       }
     });
 
@@ -243,6 +244,7 @@ function createCart(): CartStore {
         unsubscribeAuth();
       }
       Object.values(unsubscribeProducts).forEach(unsubscribe => unsubscribe());
+      clearPendingOrderData(); // Clear pending order data on page unload
     });
   }
 
@@ -376,9 +378,16 @@ function createCart(): CartStore {
       const userId = checkAuth();
       if (!userId) return;
 
-      // Fire and forget sync
-      syncCartWithFirestore(userId, []).catch(console.error);
-      set([]);
+      try {
+        // Clear cart in Firestore first
+        syncCartWithFirestore(userId, []).catch(console.error);
+        // Then clear local state
+        set([]);
+        clearPendingOrderData(); // Clear pending order data when cart is cleared
+      } catch (error) {
+        console.error('Error clearing cart:', error);
+        notifications.add('Error clearing cart', 'error');
+      }
     }
   };
 

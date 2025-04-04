@@ -65,29 +65,29 @@
 >
   <button
     on:click={handleView}
-    class="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+    class="btn btn-ghost btn-sm text-info hover:text-info-focus"
     title="View Item"
     aria-label="View item details"
   >
-    <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
+    <iconify-icon icon="material-symbols:visibility" class="text-lg"></iconify-icon>
   </button>
   
   <button
     on:click={handleUpdate}
-    class="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+    class="btn btn-ghost btn-sm text-success hover:text-success-focus"
     title="Update Item"
     aria-label="Edit item"
   >
-    <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+    <iconify-icon icon="material-symbols:edit" class="text-lg"></iconify-icon>
   </button>
   
   <button
     on:click={handleDelete}
-    class="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+    class="btn btn-ghost btn-sm text-error hover:text-error-focus"
     title="Delete Item"
     aria-label="Delete item"
   >
-    <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+    <iconify-icon icon="material-symbols:delete" class="text-lg"></iconify-icon>
   </button>
 </div>
 
@@ -96,11 +96,5 @@
   button {
     min-width: 2.5rem;
     min-height: 2.5rem;
-  }
-
-  /* Improve focus visibility */
-  button:focus-visible {
-    outline: 2px solid currentColor;
-    outline-offset: 2px;
   }
 </style> 

@@ -150,6 +150,11 @@
   }
 
   async function deleteGroup(category: string, group: string) {
+    if (!category || !group) {
+      notifications.add('Invalid category or group', 'error');
+      return;
+    }
+
     if (!confirm(`Are you sure you want to delete the group "${group}" and all its subcategories?`)) {
       return;
     }
@@ -157,6 +162,12 @@
     try {
       const categoryRef = doc(db, 'itemcategory', category);
       const categoryDoc = await getDoc(categoryRef);
+      
+      if (!categoryDoc.exists()) {
+        notifications.add('Category not found', 'error');
+        return;
+      }
+
       const currentData = categoryDoc.data() || {};
       
       const newData: CategoryData = {
@@ -247,151 +258,158 @@
 
 <div class="space-y-6">
   <!-- Add Main Category -->
-  <div class="bg-white rounded-lg shadow-sm p-4">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Add Main Category</h3>
-    <div class="flex gap-4">
-      <div class="flex-1">
-        <input
-          type="text"
-          bind:value={newMainCategory}
-          placeholder="Enter category name"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-        />
+  <div class="card bg-base-100 shadow-xl">
+    <div class="card-body">
+      <h3 class="card-title text-lg font-semibold text-base-content">Add Main Category</h3>
+      <div class="flex gap-4">
+        <div class="form-control flex-1">
+          <input
+            type="text"
+            bind:value={newMainCategory}
+            placeholder="Enter category name"
+            class="input input-bordered w-full"
+          />
+        </div>
+        <button
+          on:click={addMainCategory}
+          class="btn btn-primary"
+        >
+          Add Category
+        </button>
       </div>
-      <button
-        on:click={addMainCategory}
-        class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500"
-      >
-        Add Category
-      </button>
     </div>
   </div>
 
   <!-- Add Group -->
-  <div class="bg-white rounded-lg shadow-sm p-4">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Add Group</h3>
-    <div class="flex gap-4">
-      <div class="flex-1">
-        <select
-          bind:value={selectedMainCategory}
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+  <div class="card bg-base-100 shadow-xl">
+    <div class="card-body">
+      <h3 class="card-title text-lg font-semibold text-base-content">Add Group</h3>
+      <div class="flex gap-4">
+        <div class="form-control flex-1">
+          <select
+            bind:value={selectedMainCategory}
+            class="select select-bordered w-full"
+          >
+            <option value="">Select Category</option>
+            {#each Object.keys(categories) as category}
+              <option value={category}>{category}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="form-control flex-1">
+          <input
+            type="text"
+            bind:value={newGroup}
+            placeholder="Enter group name"
+            class="input input-bordered w-full"
+          />
+        </div>
+        <button
+          on:click={addGroup}
+          class="btn btn-primary"
         >
-          <option value="">Select Category</option>
-          {#each Object.keys(categories) as category}
-            <option value={category}>{category}</option>
-          {/each}
-        </select>
+          Add Group
+        </button>
       </div>
-      <div class="flex-1">
-        <input
-          type="text"
-          bind:value={newGroup}
-          placeholder="Enter group name"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-        />
-      </div>
-      <button
-        on:click={addGroup}
-        class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500"
-      >
-        Add Group
-      </button>
     </div>
   </div>
 
   <!-- Add Subcategory -->
-  <div class="bg-white rounded-lg shadow-sm p-4">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Add Subcategory</h3>
-    <div class="flex gap-4">
-      <div class="flex-1">
-        <select
-          bind:value={selectedMainCategory}
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-        >
-          <option value="">Select Category</option>
-          {#each Object.keys(categories) as category}
-            <option value={category}>{category}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="flex-1">
-        <select
-          bind:value={selectedGroup}
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-        >
-          <option value="">Select Group</option>
-          {#if selectedMainCategory && categories[selectedMainCategory]}
-            {#each Object.keys(categories[selectedMainCategory]) as group}
-              <option value={group}>{group}</option>
+  <div class="card bg-base-100 shadow-xl">
+    <div class="card-body">
+      <h3 class="card-title text-lg font-semibold text-base-content">Add Subcategory</h3>
+      <div class="flex gap-4">
+        <div class="form-control flex-1">
+          <select
+            bind:value={selectedMainCategory}
+            class="select select-bordered w-full"
+          >
+            <option value="">Select Category</option>
+            {#each Object.keys(categories) as category}
+              <option value={category}>{category}</option>
             {/each}
-          {/if}
-        </select>
+          </select>
+        </div>
+        <div class="form-control flex-1">
+          <select
+            bind:value={selectedGroup}
+            class="select select-bordered w-full"
+          >
+            <option value="">Select Group</option>
+            {#if selectedMainCategory && categories[selectedMainCategory]}
+              {#each Object.keys(categories[selectedMainCategory]) as group}
+                <option value={group}>{group}</option>
+              {/each}
+            {/if}
+          </select>
+        </div>
+        <div class="form-control flex-1">
+          <input
+            type="text"
+            bind:value={newSubcategory}
+            placeholder="Enter subcategory name"
+            class="input input-bordered w-full"
+          />
+        </div>
+        <button
+          on:click={addSubcategory}
+          class="btn btn-primary"
+        >
+          Add Subcategory
+        </button>
       </div>
-      <div class="flex-1">
-        <input
-          type="text"
-          bind:value={newSubcategory}
-          placeholder="Enter subcategory name"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-        />
-      </div>
-      <button
-        on:click={addSubcategory}
-        class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500"
-      >
-        Add Subcategory
-      </button>
     </div>
   </div>
 
   <!-- Category List -->
-  <div class="bg-white rounded-lg shadow-sm p-4">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Categories</h3>
-    {#if loading}
-      <div class="text-center py-4">
-        <span class="material-symbols-outlined text-4xl text-orange-500 animate-spin">sync</span>
-      </div>
-    {:else}
-      <div class="space-y-6">
-        {#each Object.entries(categories) as [category, groups]}
-          <div class="border-b border-gray-200 pb-4 last:border-b-0">
+  <div class="card bg-base-100 shadow-xl">
+    <div class="card-body">
+      <h3 class="card-title text-lg font-semibold text-base-content">Categories</h3>
+      {#if loading}
+        <div class="flex justify-center py-4">
+          <span class="loading loading-spinner loading-lg text-primary"></span>
+        </div>
+      {:else}
+        <div class="space-y-6">
+          {#each Object.entries(categories) as [category, groups]}
+            <div class="divider"></div>
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-2">
                 {@html categoryIcons[category]}
-                <h4 class="text-lg font-medium text-gray-900">{category}</h4>
+                <h4 class="text-lg font-medium text-base-content">{category}</h4>
               </div>
               <div class="flex items-center gap-2">
                 <button
                   on:click={() => deleteMainCategory(category)}
-                  class="p-1 text-red-500 hover:text-red-600 focus:outline-none"
+                  class="btn btn-ghost btn-sm text-error"
                 >
-                  <span class="material-symbols-outlined">delete</span>
+                  <iconify-icon icon="material-symbols:delete" width="20" height="20"></iconify-icon>
                 </button>
               </div>
             </div>
             
             <div class="ml-8 space-y-3">
               {#each Object.entries(groups) as [group, subcategories]}
-                <div class="border-l-2 border-gray-200 pl-4">
+                <div class="border-l-2 border-base-300 pl-4">
                   <div class="flex items-center justify-between mb-2">
-                    <h5 class="text-md font-medium text-gray-700">{group}</h5>
+                    <h5 class="text-md font-medium text-base-content/80">{group}</h5>
                     <button
                       on:click={() => deleteGroup(category, group)}
-                      class="p-1 text-red-500 hover:text-red-600 focus:outline-none"
+                      class="btn btn-ghost btn-sm text-error"
                     >
-                      <span class="material-symbols-outlined">delete</span>
+                      <iconify-icon icon="material-symbols:delete" width="20" height="20"></iconify-icon>
                     </button>
                   </div>
                   
                   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                     {#each subcategories as subcategory}
-                      <div class="flex items-center justify-between bg-gray-50 rounded-md px-3 py-1.5">
-                        <span class="text-sm text-gray-600">{subcategory}</span>
+                      <div class="flex items-center justify-between bg-base-200 rounded-lg px-3 py-1.5">
+                        <span class="text-sm text-base-content/70">{subcategory}</span>
                         <button
                           on:click={() => deleteSubcategory(category, group, subcategory)}
-                          class="p-1 text-red-500 hover:text-red-600 focus:outline-none"
+                          class="btn btn-ghost btn-xs text-error"
                         >
-                          <span class="material-symbols-outlined text-sm">delete</span>
+                          <iconify-icon icon="material-symbols:delete" width="16" height="16"></iconify-icon>
                         </button>
                       </div>
                     {/each}
@@ -399,9 +417,9 @@
                 </div>
               {/each}
             </div>
-          </div>
-        {/each}
-      </div>
-    {/if}
+          {/each}
+        </div>
+      {/if}
+    </div>
   </div>
 </div> 

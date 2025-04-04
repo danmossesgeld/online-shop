@@ -314,326 +314,340 @@
   };
 </script>
 
-<div class="space-y-4 bg-gray-50 p-6 rounded-lg shadow-md">
-  <form on:submit|preventDefault={handleSubmit} class="space-y-4">
-    <!-- Main Details Header -->
-    <div class="grid grid-cols-2 gap-4">
-      <!-- Item Name -->
-      <div>
-        <label for="itemName" class="block text-base font-bold text-orange-500">Item Name</label>
-        <input
-          id="itemName"
-          type="text"
-          bind:value={formState.itemName}
-          class="mt-1 block w-full rounded-md border-gray-600 bg-gray-100 text-gray-900 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
-          required
-        />
-      </div>
-
-      <!-- Category Selection -->
-      <div class="space-y-2">
-        <!-- svelte-ignore a11y_label_has_associated_control -->
-        <label class="block text-base font-bold text-orange-500">Category</label>
-        <div class="grid grid-cols-1 gap-2">
-          <!-- Main Category -->
-          <select
-            bind:value={selectedMainCategory}
-            on:change={handleMainCategoryChange}
-            class="block w-full rounded-md border-gray-600 bg-gray-100 text-gray-900 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
-            required
-          >
-            <option value="">Select Main Category</option>
-            {#each Object.keys(categoryData) as mainCat}
-              <option value={mainCat}>{mainCat}</option>
-            {/each}
-          </select>
-
-          <!-- Sub Category (Optional) -->
-          {#if subCategories.length > 0}
-            <select
-              bind:value={selectedSubCategory}
-              on:change={handleSubCategoryChange}
-              class="block w-full rounded-md border-gray-600 bg-gray-100 text-gray-900 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
-            >
-              <option value="">Select Sub Category (Optional)</option>
-              {#each subCategories as subCat}
-                <option value={subCat}>{subCat}</option>
-              {/each}
-            </select>
-          {/if}
-
-          <!-- Third Category (Optional) -->
-          {#if thirdCategories.length > 0}
-            <select
-              bind:value={selectedThirdCategory}
-              on:change={updateCategoryString}
-              class="block w-full rounded-md border-gray-600 bg-gray-100 text-gray-900 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
-            >
-              <option value="">Select Third Category (Optional)</option>
-              {#each thirdCategories as thirdCat}
-                <option value={thirdCat}>{thirdCat}</option>
-              {/each}
-            </select>
-          {/if}
-        </div>
-      </div>
-
-      <!-- Price -->
-      <div>
-        <label for="price" class="block text-base font-bold text-orange-500">Price</label>
-        <input
-          id="price"
-          type="number"
-          bind:value={formState.price}
-          min="0"
-          step="0.01"
-          class="mt-1 block w-full rounded-md border-gray-600 bg-gray-100 text-gray-900 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
-          required
-        />
-      </div>
-
-      <!-- Stock -->
-      <div>
-        <label for="stock" class="block text-base font-bold text-orange-500">Stock</label>
-        <input
-          id="stock"
-          type="number"
-          bind:value={formState.stock}
-          min="0"
-          class="mt-1 block w-full rounded-md border-gray-600 bg-gray-100 text-gray-900 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
-          required
-        />
-      </div>
-    </div>
-
-    <!-- Images Section -->
-    <div class="space-y-3">
-      <h3 class="text-base font-bold text-orange-500">Images</h3>
-
+<div class="card bg-base-100 shadow-xl">
+  <div class="card-body">
+    <form on:submit|preventDefault={handleSubmit} class="space-y-4">
+      <!-- Main Details Header -->
       <div class="grid grid-cols-2 gap-4">
-        <!-- Thumbnail Section -->
-        <div>
-          <!-- Current Thumbnail Preview -->
-          {#if formState.thumbnail}
-            <div class="mb-2 relative">
-              <p class="text-xs font-medium text-gray-600 mb-1">Current Thumbnail</p>
-              <div class="relative group">
-                <img
-                  src={formState.thumbnail}
-                  alt="Current thumbnail"
-                  class="h-20 w-20 object-cover rounded-lg"
-                />
-                {#if mode === 'edit'}
-                  <button
-                    type="button"
-                    on:click={handleRemoveThumbnail}
-                    class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                  >
-                    <span class="material-symbols-outlined text-sm">close</span>
-                  </button>
-                {/if}
-              </div>
-            </div>
-          {/if}
-
-          <!-- Thumbnail Upload -->
-          <div>
-            <label for="thumbnail" class="block text-sm font-medium text-gray-700">
-              {formState.thumbnail ? 'Change Thumbnail' : 'Thumbnail'}
-            </label>
-            <input
-              type="file"
-              id="thumbnail"
-              accept="image/*"
-              on:change={handleFileChange}
-              class="mt-1 block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
-            />
-          </div>
+        <!-- Item Name -->
+        <div class="form-control">
+          <label for="itemName" class="label">
+            <span class="label-text font-bold text-primary">Item Name</span>
+          </label>
+          <input
+            id="itemName"
+            type="text"
+            bind:value={formState.itemName}
+            class="input input-bordered w-full"
+            required
+          />
         </div>
 
-        <!-- Additional Images Section -->
-        <div>
-          <!-- Current Images Preview -->
-          {#if formState.images.length > 0}
-            <div class="mb-2">
-              <p class="text-xs font-medium text-gray-600 mb-1">Current Images</p>
-              <div class="flex gap-2 overflow-x-auto pb-2">
-                {#each formState.images as imageUrl, index}
-                  <div class="relative group">
-                    <!-- svelte-ignore a11y_img_redundant_alt -->
-                    <img
-                      src={imageUrl}
-                      alt="Product image"
-                      class="h-20 w-20 object-cover rounded-lg flex-shrink-0"
-                    />
-                    {#if mode === 'edit'}
-                      <button
-                        type="button"
-                        on:click={() => handleRemoveImage(index)}
-                        class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                      >
-                        <span class="material-symbols-outlined text-sm">close</span>
-                      </button>
-                    {/if}
-                  </div>
-                {/each}
-              </div>
-            </div>
-          {/if}
-
-          <!-- Images Upload -->
-          <div>
-            <label for="images" class="block text-sm font-medium text-gray-700">
-              {formState.images.length > 0 ? 'Add More Images' : 'Product Images'}
-            </label>
-            <input
-              type="file"
-              id="images"
-              accept="image/*"
-              multiple
-              on:change={handleFileChange}
-              class="mt-1 block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Variations Section -->
-    <div class="space-y-3">
-      <div class="flex justify-between items-center">
-        <h3 class="text-base font-bold text-orange-500">Variations</h3>
-        <button
-          type="button"
-          on:click={addVariation}
-          class="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
-        >
-          <span class="material-symbols-outlined text-sm">add</span>
-          Add Variation
-        </button>
-      </div>
-
-      {#each Object.entries(formState.variations) as [category, values]}
-        <div class="bg-gray-50 p-3 rounded-lg space-y-2">
-          <div class="flex items-center gap-2">
-            <input
-              type="text"
-              value={category}
-              on:input={(e) => {
-                const target = e.target as HTMLInputElement;
-                handleVariationCategoryChange(category, target.value);
-              }}
-              placeholder="Variation name"
-              class="text-base font-semibold rounded-md border-gray-600 bg-gray-100 text-gray-900 focus:border-orange-500 focus:ring-orange-500 flex-1"
-            />
-            <button
-              type="button"
-              on:click={() => handleRemoveVariation(category)}
-              class="text-red-500 hover:text-red-600 p-1"
+        <!-- Category Selection -->
+        <div class="form-control space-y-2">
+          <label class="label">
+            <span class="label-text font-bold text-primary">Category</span>
+          </label>
+          <div class="grid grid-cols-1 gap-2">
+            <!-- Main Category -->
+            <select
+              bind:value={selectedMainCategory}
+              on:change={handleMainCategoryChange}
+              class="select select-bordered w-full"
+              required
             >
-              <span class="material-symbols-outlined text-sm">delete</span>
-            </button>
+              <option value="">Select Main Category</option>
+              {#each Object.keys(categoryData) as mainCat}
+                <option value={mainCat}>{mainCat}</option>
+              {/each}
+            </select>
+
+            <!-- Sub Category (Optional) -->
+            {#if subCategories.length > 0}
+              <select
+                bind:value={selectedSubCategory}
+                on:change={handleSubCategoryChange}
+                class="select select-bordered w-full"
+              >
+                <option value="">Select Sub Category (Optional)</option>
+                {#each subCategories as subCat}
+                  <option value={subCat}>{subCat}</option>
+                {/each}
+              </select>
+            {/if}
+
+            <!-- Third Category (Optional) -->
+            {#if thirdCategories.length > 0}
+              <select
+                bind:value={selectedThirdCategory}
+                on:change={updateCategoryString}
+                class="select select-bordered w-full"
+              >
+                <option value="">Select Third Category (Optional)</option>
+                {#each thirdCategories as thirdCat}
+                  <option value={thirdCat}>{thirdCat}</option>
+                {/each}
+              </select>
+            {/if}
+          </div>
+        </div>
+
+        <!-- Price -->
+        <div class="form-control">
+          <label for="price" class="label">
+            <span class="label-text font-bold text-primary">Price</span>
+          </label>
+          <input
+            id="price"
+            type="number"
+            bind:value={formState.price}
+            min="0"
+            step="0.01"
+            class="input input-bordered w-full"
+            required
+          />
+        </div>
+
+        <!-- Stock -->
+        <div class="form-control">
+          <label for="stock" class="label">
+            <span class="label-text font-bold text-primary">Stock</span>
+          </label>
+          <input
+            id="stock"
+            type="number"
+            bind:value={formState.stock}
+            min="0"
+            class="input input-bordered w-full"
+            required
+          />
+        </div>
+      </div>
+
+      <!-- Images Section -->
+      <div class="space-y-3">
+        <h3 class="text-base font-bold text-primary">Images</h3>
+
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Thumbnail Section -->
+          <div>
+            <!-- Current Thumbnail Preview -->
+            {#if formState.thumbnail}
+              <div class="mb-2 relative">
+                <p class="text-xs font-medium text-base-content/70 mb-1">Current Thumbnail</p>
+                <div class="relative group">
+                  <img
+                    src={formState.thumbnail}
+                    alt="Current thumbnail"
+                    class="h-20 w-20 object-cover rounded-lg"
+                  />
+                  {#if mode === 'edit'}
+                    <button
+                      type="button"
+                      on:click={handleRemoveThumbnail}
+                      class="absolute -top-2 -right-2 btn btn-circle btn-error btn-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    >
+                      <iconify-icon icon="material-symbols:close" width="16" height="16"></iconify-icon>
+                    </button>
+                  {/if}
+                </div>
+              </div>
+            {/if}
+
+            <!-- Thumbnail Upload -->
+            <div>
+              <label for="thumbnail" class="label">
+                <span class="label-text">
+                  {formState.thumbnail ? 'Change Thumbnail' : 'Thumbnail'}
+                </span>
+              </label>
+              <input
+                type="file"
+                id="thumbnail"
+                accept="image/*"
+                on:change={handleFileChange}
+                class="file-input file-input-bordered w-full"
+              />
+            </div>
           </div>
 
-          <div class="space-y-2">
-            {#each values as value, index}
+          <!-- Additional Images Section -->
+          <div>
+            <!-- Current Images Preview -->
+            {#if formState.images.length > 0}
+              <div class="mb-2">
+                <p class="text-xs font-medium text-base-content/70 mb-1">Current Images</p>
+                <div class="flex gap-2 overflow-x-auto pb-2">
+                  {#each formState.images as imageUrl, index}
+                    <div class="relative group">
+                      <img
+                        src={imageUrl}
+                        alt="Product image"
+                        class="h-20 w-20 object-cover rounded-lg flex-shrink-0"
+                      />
+                      {#if mode === 'edit'}
+                        <button
+                          type="button"
+                          on:click={() => handleRemoveImage(index)}
+                          class="absolute -top-2 -right-2 btn btn-circle btn-error btn-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        >
+                          <iconify-icon icon="material-symbols:close" width="16" height="16"></iconify-icon>
+                        </button>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+
+            <!-- Images Upload -->
+            <div>
+              <label for="images" class="label">
+                <span class="label-text">
+                  {formState.images.length > 0 ? 'Add More Images' : 'Product Images'}
+                </span>
+              </label>
+              <input
+                type="file"
+                id="images"
+                accept="image/*"
+                multiple
+                on:change={handleFileChange}
+                class="file-input file-input-bordered w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Variations Section -->
+      <div class="space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-base font-bold text-primary">Variations</h3>
+          <button
+            type="button"
+            on:click={addVariation}
+            class="btn btn-ghost btn-sm text-primary"
+          >
+            <iconify-icon icon="material-symbols:add" width="16" height="16"></iconify-icon>
+            Add Variation
+          </button>
+        </div>
+
+        {#each Object.entries(formState.variations) as [category, values]}
+          <div class="card bg-base-200">
+            <div class="card-body p-4">
               <div class="flex items-center gap-2">
                 <input
                   type="text"
-                  value={value}
+                  value={category}
                   on:input={(e) => {
                     const target = e.target as HTMLInputElement;
-                    handleVariationValueChange(category, index, target.value);
+                    handleVariationCategoryChange(category, target.value);
                   }}
-                  placeholder="Value"
-                  class="text-sm rounded-md border-gray-600 bg-gray-100 text-gray-900 focus:border-orange-500 focus:ring-orange-500"
+                  placeholder="Variation name"
+                  class="input input-bordered flex-1"
                 />
                 <button
                   type="button"
-                  on:click={() => handleVariationRemove(category, index)}
-                  class="text-red-500 hover:text-red-600 p-1"
+                  on:click={() => handleRemoveVariation(category)}
+                  class="btn btn-ghost btn-sm text-error"
                 >
-                  <span class="material-symbols-outlined text-sm">close</span>
+                  <iconify-icon icon="material-symbols:delete" width="16" height="16"></iconify-icon>
                 </button>
               </div>
-            {/each}
 
-            <button
-              type="button"
-              on:click={() => handleAddVariationValue(category)}
-              class="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
-            >
-              <span class="material-symbols-outlined text-sm">add</span>
-              Add Value
-            </button>
+              <div class="space-y-2">
+                {#each values as value, index}
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={value}
+                      on:input={(e) => {
+                        const target = e.target as HTMLInputElement;
+                        handleVariationValueChange(category, index, target.value);
+                      }}
+                      placeholder="Value"
+                      class="input input-bordered input-sm"
+                    />
+                    <button
+                      type="button"
+                      on:click={() => handleVariationRemove(category, index)}
+                      class="btn btn-ghost btn-sm text-error"
+                    >
+                      <iconify-icon icon="material-symbols:close" width="16" height="16"></iconify-icon>
+                    </button>
+                  </div>
+                {/each}
+
+                <button
+                  type="button"
+                  on:click={() => handleAddVariationValue(category)}
+                  class="btn btn-ghost btn-sm text-primary"
+                >
+                  <iconify-icon icon="material-symbols:add" width="16" height="16"></iconify-icon>
+                  Add Value
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      {/each}
-    </div>
-
-    <!-- Specifications Section -->
-    <div class="space-y-3">
-      <div class="flex justify-between items-center">
-        <h3 class="text-base font-bold text-orange-500">Specifications</h3>
-        <button
-          type="button"
-          on:click={addSpec}
-          class="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
-        >
-          <span class="material-symbols-outlined text-sm">add</span>
-          Add Specification
-        </button>
+        {/each}
       </div>
 
-      {#each formState.specs as spec, index}
-        <div class="flex items-center gap-2">
-          <input
-            type="text"
-            bind:value={spec}
-            on:input={(e) => {
-              const target = e.target as HTMLInputElement;
-              handleSpecChange(index, target.value);
-            }}
-            placeholder="Specification"
-            class="text-sm rounded-md border-gray-600 bg-gray-100 text-gray-900 focus:border-orange-500 focus:ring-orange-500"
-          />
+      <!-- Specifications Section -->
+      <div class="space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-base font-bold text-primary">Specifications</h3>
           <button
             type="button"
-            on:click={() => removeSpec(index)}
-            class="text-red-500 hover:text-red-600"
+            on:click={addSpec}
+            class="btn btn-ghost btn-sm text-primary"
           >
-            <span class="material-symbols-outlined text-sm">remove</span>
+            <iconify-icon icon="material-symbols:add" width="16" height="16"></iconify-icon>
+            Add Specification
           </button>
         </div>
-      {/each}
-    </div>
 
-    <!-- Detailed Information Section -->
-    <div class="space-y-2">
-      <h3 class="text-base font-bold text-orange-500">Detailed Information</h3>
-      <textarea
-        bind:value={formState.detailedInfo}
-        rows="5"
-        placeholder="Enter detailed product information..."
-        class="block w-full rounded-md border-gray-600 bg-gray-100 text-gray-900 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm"
-      ></textarea>
-    </div>
+        {#each formState.specs as spec, index}
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              bind:value={spec}
+              on:input={(e) => {
+                const target = e.target as HTMLInputElement;
+                handleSpecChange(index, target.value);
+              }}
+              placeholder="Specification"
+              class="input input-bordered input-sm flex-1"
+            />
+            <button
+              type="button"
+              on:click={() => removeSpec(index)}
+              class="btn btn-ghost btn-sm text-error"
+            >
+              <iconify-icon icon="material-symbols:remove" width="16" height="16"></iconify-icon>
+            </button>
+          </div>
+        {/each}
+      </div>
 
-    <!-- Submit Button -->
-    <div class="flex justify-end">
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors duration-200 text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {#if isSubmitting}
-          <span class="material-symbols-outlined text-sm animate-spin">sync</span>
-          {mode === 'create' ? 'Creating...' : 'Updating...'}
-        {:else}
-          <span class="material-symbols-outlined text-sm">save</span>
-          {mode === 'create' ? 'Create' : 'Update'} Item
-        {/if}
-      </button>
-    </div>
-  </form>
+      <!-- Detailed Information Section -->
+      <div class="space-y-2">
+        <h3 class="text-base font-bold text-primary">Detailed Information</h3>
+        <textarea
+          bind:value={formState.detailedInfo}
+          rows="5"
+          placeholder="Enter detailed product information..."
+          class="textarea textarea-bordered w-full"
+        ></textarea>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="flex justify-end">
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          class="btn btn-primary"
+        >
+          {#if isSubmitting}
+            <span class="loading loading-spinner loading-sm"></span>
+            {mode === 'create' ? 'Creating...' : 'Updating...'}
+          {:else}
+            <iconify-icon icon="material-symbols:save" width="16" height="16"></iconify-icon>
+            {mode === 'create' ? 'Create' : 'Update'} Item
+          {/if}
+        </button>
+      </div>
+    </form>
+  </div>
 </div> 

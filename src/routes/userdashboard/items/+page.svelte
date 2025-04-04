@@ -44,7 +44,7 @@
       component: (item: Record<string, unknown>) => `
         <div class="flex items-center">
           <img src="${item.thumbnail as string}" alt="${item.itemName as string}" class="h-10 w-10 rounded-full object-cover mr-3" />
-          <div class="text-sm font-medium text-gray-900">${item.itemName as string}</div>
+          <div class="text-sm font-medium text-base-content">${item.itemName as string}</div>
         </div>
       `
     },
@@ -142,15 +142,15 @@
 </script>
 
 <div class="w-full">
-  <div class="bg-white rounded-lg shadow-sm p-4">
+  <div class="card bg-base-100 shadow-sm p-4">
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-gray-700">Items List</h2>
+      <h2 class="text-xl font-semibold text-base-content">Items List</h2>
       <button
         on:click={() => {
           goto('/userdashboard/items/create');
           notifications.add('Creating new item...', 'info');
         }}
-        class="bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 transition-all duration-200 flex items-center gap-1.5 text-sm font-medium shadow-sm hover:shadow-md"
+        class="btn btn-primary gap-1.5 text-sm font-medium"
       >
         <span class="material-symbols-outlined text-base">add</span>
         Add New Item

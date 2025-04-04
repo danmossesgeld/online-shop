@@ -235,9 +235,16 @@ export const login = async (email: string, password: string): Promise<UserData> 
 export const logout = async (): Promise<void> => {
   setAuthLoading(true);
   try {
-    await signOut(auth);
+    // Clear theme first
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('theme', 'light');
+    
+    // Clear all stores and cache
     clearAuthState();
     userCache.clear();
+    
+    // Sign out last
+    await signOut(auth);
   } catch (error) {
     console.error('Error during logout:', error);
     const errorMessage = 'Failed to logout. Please try again.';

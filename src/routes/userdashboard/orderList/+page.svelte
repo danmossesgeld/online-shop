@@ -174,141 +174,110 @@
 </script>
 
 <div class="w-full">
-  <div class="bg-white rounded-lg shadow-sm">
-    <div class="px-4 py-4 border-b border-gray-100">
-      <h2 class="text-xl font-semibold text-gray-700">Active Orders</h2>
+  <div class="card bg-base-100 shadow-sm">
+    <div class="px-4 py-4 border-b border-base-300">
+      <h2 class="text-xl font-semibold text-base-content">Active Orders</h2>
     </div>
 
     {#if loading}
       <div class="flex items-center justify-center py-12">
-        <span class="material-symbols-outlined text-3xl text-orange-500 animate-spin">sync</span>
+        <span class="loading loading-spinner loading-lg text-primary"></span>
       </div>
     {:else if orders.length === 0}
       <div class="flex flex-col items-center justify-center py-12">
-        <span class="material-symbols-outlined text-4xl text-gray-400 mb-3">receipt_long</span>
-        <p class="text-gray-600">No active orders found</p>
+        <span class="material-symbols-outlined text-4xl text-base-content/30 mb-3">receipt_long</span>
+        <p class="text-base-content/60">No active orders found</p>
       </div>
     {:else}
       <div class="overflow-x-auto">
-        <table class="w-full divide-y divide-gray-100">
-          <thead class="bg-gray-50/50">
+        <table class="table table-zebra w-full">
+          <thead>
             <tr>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-base-content/50 uppercase tracking-wider bg-base-200">Order ID</th>
               {#if viewType === 'admin' && isAdmin}
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-base-content/50 uppercase tracking-wider bg-base-200">Customer</th>
               {/if}
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px]">Actions</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-base-content/50 uppercase tracking-wider bg-base-200">Date</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-base-content/50 uppercase tracking-wider bg-base-200">Items</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-base-content/50 uppercase tracking-wider bg-base-200">Total</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-base-content/50 uppercase tracking-wider bg-base-200">Status</th>
+              <th class="px-4 py-2 text-center text-xs font-medium text-base-content/50 uppercase tracking-wider bg-base-200 w-[100px]">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100">
+          <tbody>
             {#each orders as order}
-              <tr class="hover:bg-gray-50/50 transition-colors duration-150">
-                <td class="px-4 py-3 text-sm font-medium text-gray-900">{order.id}</td>
+              <tr class="hover:bg-base-200/50 transition-colors duration-150">
+                <td class="px-4 py-3 text-sm font-medium text-base-content">{order.id}</td>
                 {#if viewType === 'admin' && isAdmin}
                   <td class="px-4 py-3">
-                    <div class="text-sm font-medium text-gray-900">{order.userDetails?.firstName} {order.userDetails?.lastName}</div>
-                    <div class="text-xs text-gray-500">{order.userDetails?.email}</div>
+                    <div class="text-sm font-medium text-base-content">{order.userDetails?.firstName} {order.userDetails?.lastName}</div>
+                    <div class="text-xs text-base-content/60">{order.userDetails?.email}</div>
                   </td>
                 {/if}
-                <td class="px-4 py-3 text-sm text-gray-900">
+                <td class="px-4 py-3 text-sm text-base-content">
                   {formatDate(order.timestamp)}
                 </td>
                 <td class="px-4 py-3">
-                  <div class="text-sm text-gray-900">
-                    {#each order.items.slice(0, 1) as item}
-                      <div class="flex items-start">
-                        <div>
-                          <div class="font-medium text-gray-900">
-                            {item.name}
-                            {#if item.selectedVariations}
-                              <span class="text-gray-600 text-xs">
-                                ({Object.entries(item.selectedVariations).map(([key, value]) => `${value}`).join(', ')})
-                              </span>
-                            {/if}
-                          </div>
-                          <div class="text-xs text-gray-500">
-                            {item.quantity} x {formatPrice(item.price)}
+                  <div class="flex flex-col gap-1">
+                    {#each order.items as item}
+                      <div class="flex items-center gap-2">
+                        {#if item.thumbnail}
+                          <img src={item.thumbnail} alt={item.name} class="w-8 h-8 rounded-full object-cover" />
+                        {/if}
+                        <div class="flex-1 min-w-0">
+                          <div class="text-sm font-medium text-base-content truncate">{item.name}</div>
+                          {#if item.selectedVariations}
+                            <div class="text-xs text-base-content/60">
+                              {Object.entries(item.selectedVariations).map(([key, value]) => `${key}: ${value}`).join(', ')}
+                            </div>
+                          {/if}
+                          <div class="text-xs text-base-content/60">
+                            {formatPrice(item.price)} × {item.quantity}
                           </div>
                         </div>
                       </div>
                     {/each}
-                    {#if order.items.length > 1}
-                      <div class="text-xs text-gray-500 mt-1">
-                        +{order.items.length - 1} more {order.items.length - 1 === 1 ? 'item' : 'items'}
-                      </div>
-                    {/if}
                   </div>
                 </td>
-                <td class="px-4 py-3 text-sm font-medium text-gray-900">
+                <td class="px-4 py-3 text-sm font-medium text-base-content">
                   {formatPrice(order.totalPrice)}
                 </td>
                 <td class="px-4 py-3">
-                  <span class={`px-2 py-1 inline-flex text-xs leading-5 font-medium rounded-full 
-                    ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                    order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                    order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
-                    'bg-red-100 text-red-800'}`}>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
+                    {order.status === 'pending' ? 'bg-warning/10 text-warning' : ''}
+                    {order.status === 'processing' ? 'bg-info/10 text-info' : ''}
+                    {order.status === 'delivered' ? 'bg-success/10 text-success' : ''}
+                    {order.status === 'cancelled' ? 'bg-error/10 text-error' : ''}"
+                  >
                     {order.status}
                   </span>
                 </td>
                 <td class="px-4 py-3">
-                  <div class="flex items-center justify-center space-x-2">
-                    {#if isAdmin}
+                  <div class="flex items-center justify-center gap-2">
+                    <button
+                      on:click={() => viewOrder(order.id)}
+                      class="btn btn-ghost btn-sm"
+                      title="View Order"
+                    >
+                      <span class="material-symbols-outlined text-base-content/70">visibility</span>
+                    </button>
+                    {#if isAdmin && order.status === 'pending'}
                       <button
-                        on:click={() => viewOrder(order.id)}
-                        class="text-orange-600 hover:text-orange-900 transition-colors duration-150"
-                        title="View Order"
+                        on:click={() => updateOrderStatus(order.id, 'processing')}
+                        class="btn btn-ghost btn-sm"
+                        title="Process Order"
                       >
-                        <span class="material-symbols-outlined text-base">visibility</span>
+                        <span class="material-symbols-outlined text-info">local_shipping</span>
                       </button>
-
-                      {#if order.status === 'pending'}
-                        <button
-                          on:click={() => updateOrderStatus(order.id, 'processing')}
-                          class="text-blue-600 hover:text-blue-900 transition-colors duration-150"
-                          title="Mark as Processing"
-                        >
-                          <span class="material-symbols-outlined text-base">local_shipping</span>
-                        </button>
-                      {/if}
-                      {#if order.status === 'processing'}
-                        <button
-                          on:click={() => updateOrderStatus(order.id, 'delivered')}
-                          class="text-green-600 hover:text-green-900 transition-colors duration-150"
-                          title="Mark as Delivered"
-                        >
-                          <span class="material-symbols-outlined text-base">check_circle</span>
-                        </button>
-                      {/if}
+                    {/if}
+                    {#if !isAdmin && order.status === 'pending'}
                       <button
                         on:click={() => updateOrderStatus(order.id, 'cancelled')}
-                        class="text-red-600 hover:text-red-900 transition-colors duration-150"
+                        class="btn btn-ghost btn-sm"
                         title="Cancel Order"
                       >
-                        <span class="material-symbols-outlined text-base">cancel</span>
+                        <span class="material-symbols-outlined text-error">cancel</span>
                       </button>
-                    {:else}
-                      {#if order.status === 'pending'}
-                        <button
-                          on:click={() => updateOrderStatus(order.id, 'cancelled')}
-                          class="text-red-600 hover:text-red-900 transition-colors duration-150"
-                          title="Cancel Order"
-                        >
-                          <span class="material-symbols-outlined text-base">cancel</span>
-                        </button>
-                      {:else}
-                        <button
-                          on:click={() => viewOrder(order.id)}
-                          class="text-orange-600 hover:text-orange-900 transition-colors duration-150"
-                          title="View Order"
-                        >
-                          <span class="material-symbols-outlined text-base">visibility</span>
-                        </button>
-                      {/if}
                     {/if}
                   </div>
                 </td>

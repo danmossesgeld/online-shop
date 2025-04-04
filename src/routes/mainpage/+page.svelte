@@ -244,12 +244,12 @@
 {#if $globalAuthStore.isLoading}
   <LoadingSpinner message="Checking authentication..." fullScreen={true} color="orange" />
 {:else if !$globalAuthStore.isAuthenticated}
-  <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+  <div class="min-h-screen bg-base-200 flex items-center justify-center">
     <div class="text-center p-8">
-      <span class="material-symbols-outlined text-5xl text-gray-400 mb-4">lock</span>
-      <h1 class="text-2xl font-semibold text-gray-700 mb-2">Please Log In</h1>
-      <p class="text-gray-500 mb-6">You need to be logged in to view this page.</p>
-      <a href="/login" class="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-200">
+      <span class="material-symbols-outlined text-5xl text-base-content/40 mb-4">lock</span>
+      <h1 class="text-2xl font-semibold text-base-content mb-2">Please Log In</h1>
+      <p class="text-base-content/60 mb-6">You need to be logged in to view this page.</p>
+      <a href="/login" class="btn btn-primary">
         <span class="material-symbols-outlined mr-2">login</span>
         Log In
       </a>
@@ -258,14 +258,14 @@
 {:else if isLoading}
   <LoadingSpinner message="Loading products and categories..." fullScreen={true} color="orange" />
 {:else if $errorStore}
-  <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+  <div class="min-h-screen bg-base-200 flex items-center justify-center">
     <div class="text-center p-8">
-      <span class="material-symbols-outlined text-5xl text-red-500 mb-4">error</span>
-      <h1 class="text-2xl font-semibold text-gray-700 mb-2">Error</h1>
-      <p class="text-gray-500 mb-6">{$errorStore}</p>
+      <span class="material-symbols-outlined text-5xl text-error mb-4">error</span>
+      <h1 class="text-2xl font-semibold text-base-content mb-2">Error</h1>
+      <p class="text-base-content/60 mb-6">{$errorStore}</p>
       <button
         on:click={() => window.location.reload()}
-        class="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-200"
+        class="btn btn-primary"
       >
         <span class="material-symbols-outlined mr-2">refresh</span>
         Try Again
@@ -273,21 +273,20 @@
     </div>
   </div>
 {:else}
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-base-200">
     <Navbar />
 
     <div class="pt-16">
       <!-- Main Content -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <!-- Filter Section -->
-        <div class="bg-white rounded-lg shadow-sm p-3 mb-4">
+        <div class="card bg-base-100 shadow-sm p-3 mb-4">
           <div class="flex flex-col gap-4">
             <!-- Sort Dropdown - Moved to top for better mobile UX -->
             <div class="w-full sm:w-48">
               <select 
                 bind:value={sortBy}
-                class="w-full px-3 py-2 text-sm rounded-lg bg-gray-50 border-none focus:ring-2 focus:ring-orange-500/20 transition-all duration-200 appearance-none"
-                style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22 fill=%22none%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M5 7.5L10 12.5L15 7.5%22 stroke=%22%236B7280%22 stroke-width=%221.67%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25rem;"
+                class="select select-bordered w-full"
               >
                 <option value="relevance">Sort by Relevance</option>
                 <option value="priceAsc">Price: Low to High</option>
@@ -308,13 +307,15 @@
                         on:click={() => selectCategory(category.name)}
                         class="group relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex-shrink-0 w-[72px]
                           {selectedCategory === category.name 
-                            ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/20' 
-                            : 'bg-white hover:bg-orange-50 text-gray-700 hover:text-orange-600 border border-gray-100 hover:border-orange-200 shadow-sm hover:shadow-md'}"
+                            ? 'bg-primary text-primary-content shadow-lg shadow-primary/20 selected-category' 
+                            : 'bg-base-100 hover:bg-primary/10 text-base-content hover:text-primary border border-base-300 hover:border-primary shadow-sm hover:shadow-md'}"
                       >
                         <div class="relative flex items-center justify-center w-full h-7">
-                          {@html category.icon}
+                          <div class="category-icon">
+                            {@html category.icon}
+                          </div>
                           {#if selectedCategory === category.name}
-                            <div class="absolute inset-0 animate-ping-slow bg-white/20 rounded-full"></div>
+                            <div class="absolute inset-0 animate-ping-slow bg-primary-content/20 rounded-full"></div>
                           {/if}
                         </div>
                         <span class="text-[11px] font-medium text-center leading-[1.2] w-full">{category.name}</span>
@@ -333,8 +334,8 @@
                             on:click={() => selectSubcategory(groupName, '')}
                             class="relative px-4 py-2 rounded-lg text-sm transition-all duration-200 flex-shrink-0
                               {selectedGroup === groupName
-                                ? 'bg-orange-100 text-orange-700 font-medium shadow-sm before:absolute before:inset-x-0 before:-bottom-2 before:h-0.5 before:bg-orange-500 before:rounded-full' 
-                                : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-orange-600 border border-gray-100'}"
+                                ? 'bg-primary/10 text-primary font-medium shadow-sm before:absolute before:inset-x-0 before:-bottom-2 before:h-0.5 before:bg-primary before:rounded-full' 
+                                : 'bg-base-100 text-base-content/60 hover:bg-base-200 hover:text-primary border border-base-300'}"
                           >
                             {groupName}
                           </button>
@@ -354,8 +355,8 @@
                             on:click={() => selectSubcategory(selectedGroup ?? '', subcategory)}
                             class="inline-flex items-center px-3 py-1.5 rounded-full text-xs transition-all duration-200 flex-shrink-0
                               {selectedSubcategory === subcategory
-                                ? 'bg-orange-500 text-white font-medium shadow-sm' 
-                                : 'bg-gray-50 text-gray-600 hover:bg-orange-50 hover:text-orange-600'}"
+                                ? 'bg-primary text-primary-content font-medium shadow-sm' 
+                                : 'bg-base-200 text-base-content/60 hover:bg-primary/10 hover:text-primary'}"
                           >
                             <span class="material-symbols-outlined text-[16px] mr-1">
                               {selectedSubcategory === subcategory ? 'check_circle' : 'radio_button_unchecked'}
@@ -371,13 +372,13 @@
             {:else}
               <!-- Search Results Header -->
               <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-gray-900">Search Results for "{searchQuery}"</h2>
+                <h2 class="text-lg font-semibold text-base-content">Search Results for "{searchQuery}"</h2>
                 <button
                   on:click={() => {
                     searchQuery = '';
                     window.location.href = '/mainpage';
                   }}
-                  class="inline-flex items-center px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                  class="btn btn-ghost btn-sm"
                 >
                   <span class="material-symbols-outlined text-sm mr-1">clear</span>
                   Clear Search
@@ -393,49 +394,53 @@
           {@const categoryItems = getCategoryItems(selectedCategory)}
           {#if categoryItems.length > 0}
             <div class="mb-8">
-              <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                {@html currentCategory?.icon || '<iconify-icon icon="material-symbols:category" class="text-orange-500"></iconify-icon>'}
+              <h2 class="text-xl font-semibold text-base-content mb-4 flex items-center gap-2">
+                <div class="category-icon">
+                  {@html currentCategory?.icon || '<iconify-icon icon="material-symbols:category" class="text-primary"></iconify-icon>'}
+                </div>
                 {selectedCategory}
               </h2>
               
               <!-- Vertical grid layout for selected category -->
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {#each categoryItems as item (item.id)}
-                  <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 flex flex-col">
+                  <div class="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-300 group">
                     <!-- Product Image -->
-                    <div class="relative h-40 w-full overflow-hidden bg-gray-100">
+                    <div class="relative h-40 w-full overflow-hidden bg-base-200">
                       <button
                         on:click={() => goto(`/product/${item.itemId}`)}
-                        class="w-full h-full p-0 border-none bg-transparent cursor-pointer"
+                        class="w-full h-full p-0 border-none bg-transparent cursor-pointer flex items-center justify-center"
                       >
-                        <img
-                          src={item.thumbnail || 'https://via.placeholder.com/300?text=No+Image'}
-                          alt={item.itemName}
-                          class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
-                          loading="lazy"
-                          decoding="async"
-                          on:error={(e: Event) => {
-                            const img = e.currentTarget as HTMLImageElement;
-                            img.src = 'https://via.placeholder.com/300?text=No+Image';
-                          }}
-                        />
-                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
+                        <div class="w-full h-full flex items-center justify-center">
+                          <img
+                            src={item.thumbnail || 'https://via.placeholder.com/300?text=No+Image'}
+                            alt={item.itemName}
+                            class="w-full h-full object-contain bg-base-100 transform group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                            decoding="async"
+                            on:error={(e: Event) => {
+                              const img = e.currentTarget as HTMLImageElement;
+                              img.src = 'https://via.placeholder.com/300?text=No+Image';
+                            }}
+                          />
+                        </div>
+                        <div class="absolute inset-0 bg-base-content/0 group-hover:bg-base-content/5 transition-colors duration-300"></div>
                       </button>
                     </div>
 
                     <!-- Product Info -->
-                    <div class="p-3 flex-grow flex flex-col">
-                      <h3 class="text-sm font-semibold text-gray-900 mb-1 truncate">{item.itemName}</h3>
-                      <div class="flex items-center justify-between pt-1 mt-auto border-t border-gray-100">
-                        <span class="text-sm font-semibold text-orange-600">
+                    <div class="card-body p-3">
+                      <h3 class="card-title text-sm text-base-content mb-1 truncate">{item.itemName}</h3>
+                      <div class="flex items-center justify-between pt-1 mt-auto border-t border-base-300">
+                        <span class="text-sm font-semibold text-primary">
                           {formatPrice(item.price)}
                         </span>
                         <button
                           on:click={() => goto(`/product/${item.itemId}`)}
-                          class="inline-flex items-center px-2 py-1 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+                          class="btn btn-ghost btn-circle btn-sm"
+                          aria-label="View Details"
                         >
-                          <span class="material-symbols-outlined text-sm mr-0.5">visibility</span>
-                          View Details
+                          <iconify-icon icon="material-symbols:visibility" class="text-primary text-lg"></iconify-icon>
                         </button>
                       </div>
                     </div>
@@ -448,20 +453,20 @@
                 <div class="flex justify-center mt-6">
                   <button
                     on:click={() => toggleCategory(selectedCategory || '')}
-                    class="inline-flex items-center px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-orange-50 hover:border-orange-200 transition-all duration-200"
+                    class="btn btn-ghost"
                   >
-                    <span class="material-symbols-outlined text-orange-500 mr-2">expand_more</span>
-                    <span class="text-sm font-medium text-orange-600">Show More Items</span>
+                    <span class="material-symbols-outlined text-primary mr-2">expand_more</span>
+                    <span class="text-sm font-medium text-primary">Show More Items</span>
                   </button>
                 </div>
               {:else if expandedCategories.has(selectedCategory || '') && categoryItems.length > 20}
                 <div class="flex justify-center mt-6">
                   <button
                     on:click={() => toggleCategory(selectedCategory || '')}
-                    class="inline-flex items-center px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-orange-50 hover:border-orange-200 transition-all duration-200"
+                    class="btn btn-ghost"
                   >
-                    <span class="material-symbols-outlined text-orange-500 mr-2">expand_less</span>
-                    <span class="text-sm font-medium text-orange-600">Show Less</span>
+                    <span class="material-symbols-outlined text-primary mr-2">expand_less</span>
+                    <span class="text-sm font-medium text-primary">Show Less</span>
                   </button>
                 </div>
               {/if}
@@ -472,8 +477,10 @@
           {#each categories as category}
             {#if getCategoryItemsByName(category.name).length > 0}
               <div class="mb-8">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  {@html category.icon}
+                <h2 class="text-xl font-semibold text-base-content mb-4 flex items-center gap-2">
+                  <div class="category-icon">
+                    {@html category.icon}
+                  </div>
                   {category.name}
                 </h2>
                 
@@ -481,56 +488,58 @@
                 <div class="overflow-x-auto pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
                   <div class="flex gap-3 min-w-max">
                     {#each getCategoryItemsByName(category.name, expandedCategories.has(category.name) ? undefined : 2) as item (item.id)}
-                      <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0">
+                      <div class="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0 group">
                         <!-- Product Image -->
-                        <div class="relative h-32 w-full overflow-hidden bg-gray-100">
+                        <div class="relative h-32 w-full overflow-hidden bg-base-200">
                           <button
                             on:click={() => goto(`/product/${item.itemId}`)}
-                            class="w-full h-full p-0 border-none bg-transparent cursor-pointer"
+                            class="w-full h-full p-0 border-none bg-transparent cursor-pointer flex items-center justify-center"
                           >
-                            <img
-                              src={item.thumbnail || 'https://via.placeholder.com/300?text=No+Image'}
-                              alt={item.itemName}
-                              class="w-full h-full object-contain bg-white transform group-hover:scale-105 transition-transform duration-300"
-                              loading="lazy"
-                              decoding="async"
-                              on:error={(e: Event) => {
-                                const img = e.currentTarget as HTMLImageElement;
-                                img.src = 'https://via.placeholder.com/300?text=No+Image';
-                              }}
-                            />
-                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
+                            <div class="w-full h-full flex items-center justify-center">
+                              <img
+                                src={item.thumbnail || 'https://via.placeholder.com/300?text=No+Image'}
+                                alt={item.itemName}
+                                class="w-full h-full object-contain bg-base-100 transform group-hover:scale-105 transition-transform duration-300"
+                                loading="lazy"
+                                decoding="async"
+                                on:error={(e: Event) => {
+                                  const img = e.currentTarget as HTMLImageElement;
+                                  img.src = 'https://via.placeholder.com/300?text=No+Image';
+                                }}
+                              />
+                            </div>
+                            <div class="absolute inset-0 bg-base-content/0 group-hover:bg-base-content/5 transition-colors duration-300"></div>
                           </button>
                         </div>
 
                         <!-- Product Info -->
-                        <div class="p-2">
-                          <h3 class="text-sm font-semibold text-gray-900 mb-1 truncate">{item.itemName}</h3>
-                          <div class="flex items-center justify-between pt-1 border-t border-gray-100">
-                            <span class="text-sm font-semibold text-orange-600">
+                        <div class="card-body p-2">
+                          <h3 class="card-title text-sm text-base-content mb-1 truncate">{item.itemName}</h3>
+                          <div class="flex items-center justify-between pt-1 border-t border-base-300">
+                            <span class="text-sm font-semibold text-primary">
                               {formatPrice(item.price)}
                             </span>
                             <button
                               on:click={() => goto(`/product/${item.itemId}`)}
-                              class="inline-flex items-center px-2 py-1 text-xs font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+                              class="btn btn-ghost btn-circle btn-sm"
+                              aria-label="View Details"
                             >
-                              <span class="material-symbols-outlined text-sm mr-0.5">visibility</span>
-                              View Details
+                              <iconify-icon icon="material-symbols:visibility" class="text-primary text-lg"></iconify-icon>
                             </button>
                           </div>
                         </div>
                       </div>
                     {/each}
                     {#if getCategoryItemsByName(category.name).length > 2}
-                      <div class="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0">
+                      <div class="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-300 w-[200px] flex-shrink-0">
                         <button
                           on:click={() => toggleCategory(category.name)}
-                          class="w-full h-full flex flex-col items-center justify-center p-4 text-center hover:bg-gray-50 transition-colors duration-200"
+                          class="w-full h-full flex flex-col items-center justify-center p-4 text-center hover:bg-base-200 transition-colors duration-200"
                         >
-                          <span class="material-symbols-outlined text-3xl text-orange-500 mb-2">
+                          <span class="material-symbols-outlined text-3xl text-primary mb-2">
                             {expandedCategories.has(category.name) ? 'chevron_left' : 'chevron_right'}
                           </span>
-                          <span class="text-sm font-medium text-orange-600">
+                          <span class="text-sm font-medium text-primary">
                             {expandedCategories.has(category.name) ? 'Show Less' : 'See More'}
                           </span>
                         </button>
@@ -546,9 +555,9 @@
         <!-- Empty State -->
         {#if !isLoading && filteredItems.length === 0}
           <div class="text-center py-8">
-            <span class="material-symbols-outlined text-3xl text-gray-400 mb-2">search_off</span>
-            <h3 class="text-base font-medium text-gray-900 mb-1">No products found</h3>
-            <p class="text-sm text-gray-500">Try adjusting your search or filter criteria</p>
+            <span class="material-symbols-outlined text-3xl text-base-content/40 mb-2">search_off</span>
+            <h3 class="text-base font-medium text-base-content mb-1">No products found</h3>
+            <p class="text-sm text-base-content/60">Try adjusting your search or filter criteria</p>
           </div>
         {/if}
       </div>
@@ -560,11 +569,11 @@
     width: 24px;
     height: 24px;
     transition: all 0.2s ease-in-out;
-    color: rgb(249 115 22); /* text-orange-500 */
+    color: hsl(var(--p));
   }
 
   :global(.bg-gradient-to-br iconify-icon) {
-    color: white;
+    color: hsl(var(--pc));
     transform: scale(1.1);
   }
 
@@ -588,6 +597,23 @@
 
   .animate-ping-slow {
     animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  /* Add styles for category icons */
+  :global(.category-icon) {
+    color: hsl(var(--bc));
+    transition: all 0.3s ease-out;
+  }
+
+  :global(.group:hover .category-icon),
+  :global(button:hover .category-icon) {
+    color: hsl(var(--p));
+    transform: scale(1.05);
+  }
+
+  /* Add styles for selected category icon */
+  :global(.selected-category .category-icon) {
+    color: hsl(var(--pc));
   }
 </style>
 

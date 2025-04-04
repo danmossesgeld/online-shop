@@ -88,7 +88,7 @@
 {#if isLoading}
   <LoadingSpinner message={isSignUp ? "Creating your account..." : "Signing you in..."} fullScreen={true} color="orange" />
 {:else}
-  <div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+  <div class="min-h-screen bg-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-md">
       <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
         {isSignUp ? 'Create your account' : 'Sign in to your account'}
@@ -96,7 +96,7 @@
     </div>
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <div class="bg-white py-8 px-4 shadow-lg sm:rounded-lg sm:px-10 border border-gray-200">
         <form class="space-y-6" on:submit|preventDefault={handleSubmit}>
           {#if isSignUp}
             <div>
@@ -109,7 +109,7 @@
                   type="text"
                   id="firstName"
                   bind:value={firstName}
-                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
                   class:border-red-500={formErrors.firstName}
                   required
                 />
@@ -129,7 +129,7 @@
                   type="text"
                   id="lastName"
                   bind:value={lastName}
-                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
                   class:border-red-500={formErrors.lastName}
                   required
                 />
@@ -149,7 +149,7 @@
                   type="text"
                   id="midName"
                   bind:value={midName}
-                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
                 />
               </div>
             </div>
@@ -164,7 +164,7 @@
                   type="text"
                   id="address"
                   bind:value={address}
-                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
                   class:border-red-500={formErrors.address}
                   required
                 />
@@ -184,7 +184,7 @@
                   type="tel"
                   id="contactNumber"
                   bind:value={contactNumber}
-                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
                   class:border-red-500={formErrors.contactNumber}
                   required
                 />
@@ -205,7 +205,7 @@
                 type="email"
                 id="email"
                 bind:value={email}
-                class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
                 class:border-red-500={formErrors.email}
                 required
               />
@@ -225,7 +225,7 @@
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 bind:value={password}
-                class="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                class="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
                 class:border-red-500={formErrors.password}
                 required
               />

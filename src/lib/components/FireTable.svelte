@@ -81,81 +81,79 @@
   );
 </script>
 
-<div class="bg-white rounded-lg flex flex-col h-full w-full">
+<div class="card bg-base-100 shadow-xl flex flex-col h-full w-full">
   <!-- Search, Sort and Count -->
-  <div class="flex flex-wrap items-center justify-between gap-3 p-2 border-b border-gray-100">
-    <!-- Search -->
-    <div class="relative w-full sm:w-auto sm:min-w-[180px] sm:max-w-xs">
-      <input
-        type="text"
-        bind:value={searchQuery}
-        placeholder="Search items..."
-        class="w-full pl-8 pr-3 py-1 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
-        aria-label="Search items"
-      />
-      <span class="material-symbols-outlined absolute left-2 top-1 text-gray-400 text-lg">search</span>
-    </div>
+  <div class="card-body p-4 border-b border-base-300">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <!-- Search -->
+      <div class="form-control relative w-full sm:w-auto sm:min-w-[180px] sm:max-w-xs">
+        <input
+          type="text"
+          bind:value={searchQuery}
+          placeholder="Search items..."
+          class="input input-bordered w-full pl-8 bg-base-200"
+          aria-label="Search items"
+        />
+        <iconify-icon icon="material-symbols:search" class="absolute left-2 top-1/2 -translate-y-1/2 text-base-content/50 text-lg"></iconify-icon>
+      </div>
 
-    <!-- Right Side Controls -->
-    <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-      <!-- Sort Controls -->
-      {#if sortableColumns.length > 0}
-        <div class="flex items-center gap-2 min-w-[120px] max-w-[180px]">
-          <select
-            id="sortField"
-            bind:value={sortField}
-            class="w-full text-sm border border-gray-200 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
-            aria-label="Sort by"
-          >
-            <option value="">Sort by</option>
-            {#each sortableColumns as column}
-              <option value={column.key}>{column.label}</option>
-            {/each}
-          </select>
-          {#if sortField}
-            <button
-              on:click={() => sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'}
-              class="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-150"
-              title={sortDirection === 'asc' ? 'Sort Ascending' : 'Sort Descending'}
-              aria-label={sortDirection === 'asc' ? 'Sort Ascending' : 'Sort Descending'}
+      <!-- Right Side Controls -->
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <!-- Sort Controls -->
+        {#if sortableColumns.length > 0}
+          <div class="flex items-center gap-2 min-w-[120px] max-w-[180px]">
+            <select
+              id="sortField"
+              bind:value={sortField}
+              class="select select-bordered w-full bg-base-200"
+              aria-label="Sort by"
             >
-              <span class="material-symbols-outlined text-gray-500 text-lg">
-                {getSortIcon(sortDirection)}
-              </span>
-            </button>
-          {/if}
-        </div>
-      {/if}
+              <option value="">Sort by</option>
+              {#each sortableColumns as column}
+                <option value={column.key}>{column.label}</option>
+              {/each}
+            </select>
+            {#if sortField}
+              <button
+                on:click={() => sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'}
+                class="btn btn-ghost btn-sm"
+                title={sortDirection === 'asc' ? 'Sort Ascending' : 'Sort Descending'}
+                aria-label={sortDirection === 'asc' ? 'Sort Ascending' : 'Sort Descending'}
+              >
+                <iconify-icon icon={`material-symbols:${getSortIcon(sortDirection)}`} class="text-base-content/70 text-lg"></iconify-icon>
+              </button>
+            {/if}
+          </div>
+        {/if}
 
-      <!-- Count -->
-      <div class="text-sm text-gray-500 whitespace-nowrap min-w-[60px] text-right">
-        {filteredData.length} item{filteredData.length !== 1 ? 's' : ''}
+        <!-- Count -->
+        <div class="text-sm text-base-content/50 whitespace-nowrap min-w-[60px] text-right">
+          {filteredData.length} item{filteredData.length !== 1 ? 's' : ''}
+        </div>
       </div>
     </div>
   </div>
 
   {#if loading}
     <div class="flex-1 flex justify-center items-center h-32">
-      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500" role="status">
-        <span class="sr-only">Loading...</span>
-      </div>
+      <span class="loading loading-spinner loading-lg text-primary"></span>
     </div>
   {:else if filteredData.length === 0}
     <div class="flex-1 flex items-center justify-center py-6">
       <div class="text-center">
-        <span class="material-symbols-outlined text-3xl text-gray-400 mb-2">inventory_2</span>
-        <p class="text-sm text-gray-500">No items found</p>
+        <iconify-icon icon="material-symbols:inventory-2" class="text-3xl text-base-content/30 mb-2"></iconify-icon>
+        <p class="text-sm text-base-content/50">No items found</p>
       </div>
     </div>
   {:else}
     <div class="flex-1 overflow-x-auto">
       <div class="w-full inline-block align-middle">
-        <table class="w-full table-auto divide-y divide-gray-100" role="table">
+        <table class="table table-zebra w-full" role="table">
           <thead>
-            <tr class="bg-gray-50/50">
+            <tr>
               {#each enhancedColumns as column}
                 <th 
-                  class="px-2 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-2 py-1.5 text-left text-xs font-medium text-base-content/50 uppercase tracking-wider bg-base-200"
                   style="width: {column.width}; min-width: {column.minWidth}; max-width: {column.maxWidth}"
                   scope="col"
                 >
@@ -163,7 +161,7 @@
                 </th>
               {/each}
               <th 
-                class="px-1.5 py-1.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                class="px-1.5 py-1.5 text-center text-xs font-medium text-base-content/50 uppercase tracking-wider bg-base-200" 
                 style="width: 70px; min-width: 70px"
                 scope="col"
               >
@@ -171,9 +169,9 @@
               </th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100">
+          <tbody>
             {#each filteredData as item (item.id)}
-              <tr class="hover:bg-gray-50/50 transition-colors duration-150">
+              <tr class="hover:bg-base-200/50 transition-colors duration-150">
                 {#each enhancedColumns as column}
                   <td 
                     class="px-2 py-1.5 whitespace-nowrap"
@@ -182,7 +180,7 @@
                     {#if column.component}
                       {@html column.component(item)}
                     {:else}
-                      <div class="text-sm text-gray-700 truncate">
+                      <div class="text-sm text-base-content truncate">
                         {column.formatter ? column.formatter(item[column.key]) : String(item[column.key] || '')}
                       </div>
                     {/if}
@@ -225,15 +223,5 @@
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  /* Style select element */
-  select {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.5rem center;
-    background-repeat: no-repeat;
-    background-size: 1.5em 1.5em;
-    padding-right: 2.5rem;
   }
 </style> 

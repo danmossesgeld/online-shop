@@ -3,21 +3,7 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
-  "hosting": [{
-    "target": "main",
-    "public": "build",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  }, {
+  "hosting": {
     "target": "doki",
     "public": "build",
     "ignore": [
@@ -31,7 +17,7 @@
         "destination": "/index.html"
       }
     ]
-  }],
+  },
   "storage": {
     "rules": "storage.rules"
   }
