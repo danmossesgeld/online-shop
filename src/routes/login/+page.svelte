@@ -88,209 +88,233 @@
 {#if isLoading}
   <LoadingSpinner message={isSignUp ? "Creating your account..." : "Signing you in..."} fullScreen={true} color="orange" />
 {:else}
-  <div class="min-h-screen bg-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md">
-      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-        {isSignUp ? 'Create your account' : 'Sign in to your account'}
-      </h2>
-    </div>
+  <div class="min-h-screen bg-base-200 flex items-center justify-center p-4">
+    <div class="card w-full max-w-md bg-base-100 shadow-xl">
+      <div class="card-body p-6 sm:p-8">
+        <div class="flex flex-col items-center mb-6">
+          <div class="avatar placeholder mb-4">
+            <div class="bg-primary text-primary-content rounded-full w-16">
+              <span class="text-2xl">
+                <iconify-icon icon={isSignUp ? "material-symbols:person-add" : "material-symbols:login"} width="32" height="32"></iconify-icon>
+              </span>
+            </div>
+          </div>
+          <h2 class="card-title text-3xl font-bold text-center">
+            {isSignUp ? 'Create your account' : 'Sign in to your account'}
+          </h2>
+          <p class="text-base-content/60 text-center mt-2">
+            {isSignUp ? 'Join our community today' : 'Welcome back! Please enter your details'}
+          </p>
+        </div>
 
-    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="bg-white py-8 px-4 shadow-lg sm:rounded-lg sm:px-10 border border-gray-200">
-        <form class="space-y-6" on:submit|preventDefault={handleSubmit}>
+        <form class="space-y-4" on:submit|preventDefault={handleSubmit}>
           {#if isSignUp}
-            <div>
-              <label for="firstName" class="block text-sm font-medium text-gray-700">First Name</label>
-              <div class="mt-1 relative rounded-md shadow-sm">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span class="material-symbols-outlined text-gray-400">person</span>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text font-medium">First Name</span>
+                </label>
+                <div class="join">
+                  <span class="join-item btn btn-square bg-base-200">
+                    <iconify-icon icon="material-symbols:person" width="20" height="20"></iconify-icon>
+                  </span>
+                  <input
+                    type="text"
+                    bind:value={firstName}
+                    class="join-item input input-bordered w-full focus:input-primary"
+                    class:input-error={formErrors.firstName}
+                    placeholder="John"
+                    required
+                  />
                 </div>
-                <input
-                  type="text"
-                  id="firstName"
-                  bind:value={firstName}
-                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
-                  class:border-red-500={formErrors.firstName}
-                  required
-                />
+                {#if formErrors.firstName}
+                  <label class="label">
+                    <span class="label-text-alt text-error">{formErrors.firstName}</span>
+                  </label>
+                {/if}
               </div>
-              {#if formErrors.firstName}
-                <p class="mt-1 text-sm text-red-600">{formErrors.firstName}</p>
-              {/if}
+
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text font-medium">Last Name</span>
+                </label>
+                <div class="join">
+                  <span class="join-item btn btn-square bg-base-200">
+                    <iconify-icon icon="material-symbols:person" width="20" height="20"></iconify-icon>
+                  </span>
+                  <input
+                    type="text"
+                    bind:value={lastName}
+                    class="join-item input input-bordered w-full focus:input-primary"
+                    class:input-error={formErrors.lastName}
+                    placeholder="Doe"
+                    required
+                  />
+                </div>
+                {#if formErrors.lastName}
+                  <label class="label">
+                    <span class="label-text-alt text-error">{formErrors.lastName}</span>
+                  </label>
+                {/if}
+              </div>
             </div>
 
-            <div>
-              <label for="lastName" class="block text-sm font-medium text-gray-700">Last Name</label>
-              <div class="mt-1 relative rounded-md shadow-sm">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span class="material-symbols-outlined text-gray-400">person</span>
-                </div>
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Middle Name (Optional)</span>
+              </label>
+              <div class="join">
+                <span class="join-item btn btn-square bg-base-200">
+                  <iconify-icon icon="material-symbols:person" width="20" height="20"></iconify-icon>
+                </span>
                 <input
                   type="text"
-                  id="lastName"
-                  bind:value={lastName}
-                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
-                  class:border-red-500={formErrors.lastName}
-                  required
-                />
-              </div>
-              {#if formErrors.lastName}
-                <p class="mt-1 text-sm text-red-600">{formErrors.lastName}</p>
-              {/if}
-            </div>
-
-            <div>
-              <label for="midName" class="block text-sm font-medium text-gray-700">Middle Name (Optional)</label>
-              <div class="mt-1 relative rounded-md shadow-sm">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span class="material-symbols-outlined text-gray-400">person</span>
-                </div>
-                <input
-                  type="text"
-                  id="midName"
                   bind:value={midName}
-                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
+                  class="join-item input input-bordered w-full focus:input-primary"
+                  placeholder="Middle"
                 />
               </div>
             </div>
 
-            <div>
-              <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
-              <div class="mt-1 relative rounded-md shadow-sm">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span class="material-symbols-outlined text-gray-400">home</span>
-                </div>
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Address</span>
+              </label>
+              <div class="join">
+                <span class="join-item btn btn-square bg-base-200">
+                  <iconify-icon icon="material-symbols:home" width="20" height="20"></iconify-icon>
+                </span>
                 <input
                   type="text"
-                  id="address"
                   bind:value={address}
-                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
-                  class:border-red-500={formErrors.address}
+                  class="join-item input input-bordered w-full focus:input-primary"
+                  class:input-error={formErrors.address}
+                  placeholder="123 Main St"
                   required
                 />
               </div>
               {#if formErrors.address}
-                <p class="mt-1 text-sm text-red-600">{formErrors.address}</p>
+                <label class="label">
+                  <span class="label-text-alt text-error">{formErrors.address}</span>
+                </label>
               {/if}
             </div>
 
-            <div>
-              <label for="contactNumber" class="block text-sm font-medium text-gray-700">Contact Number</label>
-              <div class="mt-1 relative rounded-md shadow-sm">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span class="material-symbols-outlined text-gray-400">phone</span>
-                </div>
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Contact Number</span>
+              </label>
+              <div class="join">
+                <span class="join-item btn btn-square bg-base-200">
+                  <iconify-icon icon="material-symbols:phone" width="20" height="20"></iconify-icon>
+                </span>
                 <input
                   type="tel"
-                  id="contactNumber"
                   bind:value={contactNumber}
-                  class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
-                  class:border-red-500={formErrors.contactNumber}
+                  class="join-item input input-bordered w-full focus:input-primary"
+                  class:input-error={formErrors.contactNumber}
+                  placeholder="+1234567890"
                   required
                 />
               </div>
               {#if formErrors.contactNumber}
-                <p class="mt-1 text-sm text-red-600">{formErrors.contactNumber}</p>
+                <label class="label">
+                  <span class="label-text-alt text-error">{formErrors.contactNumber}</span>
+                </label>
               {/if}
             </div>
           {/if}
 
-          <div>
-            <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
-            <div class="mt-1 relative rounded-md shadow-sm">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span class="material-symbols-outlined text-gray-400">email</span>
-              </div>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Email</span>
+            </label>
+            <div class="join">
+              <span class="join-item btn btn-square bg-base-200">
+                <iconify-icon icon="material-symbols:email" width="20" height="20"></iconify-icon>
+              </span>
               <input
                 type="email"
-                id="email"
                 bind:value={email}
-                class="block w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
-                class:border-red-500={formErrors.email}
+                class="join-item input input-bordered w-full focus:input-primary"
+                class:input-error={formErrors.email}
+                placeholder="john@example.com"
                 required
               />
             </div>
             {#if formErrors.email}
-              <p class="mt-1 text-sm text-red-600">{formErrors.email}</p>
+              <label class="label">
+                <span class="label-text-alt text-error">{formErrors.email}</span>
+              </label>
             {/if}
           </div>
 
-          <div>
-            <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-            <div class="mt-1 relative rounded-md shadow-sm">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span class="material-symbols-outlined text-gray-400">lock</span>
-              </div>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Password</span>
+            </label>
+            <div class="join">
+              <span class="join-item btn btn-square bg-base-200">
+                <iconify-icon icon="material-symbols:lock" width="20" height="20"></iconify-icon>
+              </span>
               <input
                 type={showPassword ? 'text' : 'password'}
-                id="password"
                 bind:value={password}
-                class="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white text-gray-900"
-                class:border-red-500={formErrors.password}
+                class="join-item input input-bordered w-full focus:input-primary"
+                class:input-error={formErrors.password}
+                placeholder="••••••••"
                 required
               />
               <button
                 type="button"
-                class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                class="join-item btn btn-square bg-base-200 hover:bg-base-300"
                 on:click={() => showPassword = !showPassword}
               >
-                <span class="material-symbols-outlined text-gray-400 hover:text-gray-500">
-                  {showPassword ? 'visibility_off' : 'visibility'}
-                </span>
+                <iconify-icon icon={showPassword ? "material-symbols:visibility-off" : "material-symbols:visibility"} width="20" height="20"></iconify-icon>
               </button>
             </div>
             {#if formErrors.password}
-              <p class="mt-1 text-sm text-red-600">{formErrors.password}</p>
+              <label class="label">
+                <span class="label-text-alt text-error">{formErrors.password}</span>
+              </label>
             {/if}
           </div>
 
           {#if $error}
-            <div class="rounded-md bg-red-50 p-4">
-              <div class="flex">
-                <div class="flex-shrink-0">
-                  <span class="material-symbols-outlined text-red-400">error</span>
-                </div>
-                <div class="ml-3">
-                  <p class="text-sm text-red-700">{$error}</p>
-                </div>
-              </div>
+            <div class="alert alert-error shadow-lg">
+              <iconify-icon icon="material-symbols:error" width="20" height="20"></iconify-icon>
+              <span>{$error}</span>
             </div>
           {/if}
 
-          <div>
+          <div class="form-control mt-6">
             <button
               type="submit"
-              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="btn btn-primary w-full gap-2"
               disabled={isLoading}
             >
+              <iconify-icon icon={isSignUp ? "material-symbols:person-add" : "material-symbols:login"} width="20" height="20"></iconify-icon>
               {isSignUp ? 'Sign up' : 'Sign in'}
             </button>
           </div>
         </form>
 
-        <div class="mt-6">
-          <div class="relative">
-            <div class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-gray-300"></div>
-            </div>
-            <div class="relative flex justify-center text-sm">
-              <span class="px-2 bg-white text-gray-500">
-                {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-              </span>
-            </div>
-          </div>
+        <div class="divider text-base-content/60">OR</div>
 
-          <div class="mt-6">
-            <button
-              type="button"
-              class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-              on:click={() => isSignUp = !isSignUp}
-            >
-              {isSignUp ? 'Sign in instead' : 'Create an account'}
-            </button>
-          </div>
+        <div class="text-center">
+          <button
+            class="btn btn-ghost w-full gap-2"
+            on:click={() => isSignUp = !isSignUp}
+          >
+            <iconify-icon icon={isSignUp ? "material-symbols:login" : "material-symbols:person-add"} width="20" height="20"></iconify-icon>
+            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+          </button>
         </div>
       </div>
     </div>
   </div>
 {/if}
+
+<svelte:head>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+</svelte:head>
