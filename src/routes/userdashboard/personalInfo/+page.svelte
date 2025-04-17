@@ -68,6 +68,7 @@
       <form on:submit|preventDefault={handleSubmit} class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="form-control">
+            <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="label">
               <span class="label-text text-base-content">First Name</span>
             </label>
